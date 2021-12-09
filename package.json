@@ -9,7 +9,7 @@
   "scripts": {
     "clean": "rimraf dist",
     "stamp": "echo make stamp",
-    "build": "tsc && @stamp",
+    "build": "tsc && npm run stamp",
     "start": "node ./dist/index.js"
   },
   "repository": {
