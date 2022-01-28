@@ -8,9 +8,10 @@
   },
   "scripts": {
     "clean": "rimraf dist",
-    "stamp": "echo make stamp",
+    "stamp": "date -u +%Y-%m-%dT%H:%M:%S > buildtimestamp",
     "build": "tsc && npm run stamp",
-    "start": "node ./dist/index.js"
+    "start": "node ./dist/index.js",
+    "replay": "node ./node_modules/.bin/replay"
   },
   "repository": {
     "type": "git",
@@ -25,7 +26,10 @@
     "cluster",
     "scrape",
     "crawl",
-    "parse"
+    "chrome",
+    "chromium",
+    "parse",
+    "secret-agent"
   ],
   "author": "luka-dev",
   "license": "MIT",
@@ -44,7 +48,9 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.17.1",
+    "fs": "^0.0.1-security",
     "helmet": "^4.6.0",
-    "secret-agent": "^1.5.15"
+    "os": "^0.1.2",
+    "secret-agent": "^1.6.1"
   }
 }
