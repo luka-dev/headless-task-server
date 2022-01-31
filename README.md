@@ -105,7 +105,20 @@ npm run start
 > {"title": "Example Domain"}
 > ```
 > - Whole Response
-
+> ```json
+> {
+>   "timigs": {
+>     "BEGIN_AT": "2022-01-31T12:46:54.877Z",
+>     "END_AT": "2022-01-31T12:46:56.910Z",
+>     "CREATED_AT": "2022-01-31T12:46:52.451Z"
+>   },
+>   "session": "dd3d53b0-8293-11ec-8e51-af88f0928944",
+>   "status": "DONE",
+>   "output": {
+>     "title": "Example Domain"
+>   }
+> }
+> ```
 
 # How to write any script?
 Welcome to official [DOCS of Secret-Agent](https://secretagent.dev/docs/).
