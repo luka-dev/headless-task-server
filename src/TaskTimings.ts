@@ -16,12 +16,4 @@ export default class TaskTimings {
     public end(): void {
         this.END_AT = new ISODate();
     }
-
-    public serialize() {
-        return {
-            'CREATED_AT': this.CREATED_AT,
-            'BEGIN_AT': this.BEGIN_AT,
-            'END_AT': this.END_AT
-        }
-    }
 }
