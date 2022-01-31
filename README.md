@@ -90,7 +90,7 @@ npm run start
 > 
 > {
 >   "options": {
->     "userAgent": "My_Custom_User_Agent 2.0"
+>     "userAgentString": "My_Custom_User_Agent 2.0"
 >   },
 >   "script": "await agent.goto('https://example.com/'); agent.output.title = (await agent.document.title);"
 > }
