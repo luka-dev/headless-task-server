@@ -5,8 +5,14 @@ import IAgentCreateOptions from "@secret-agent/client/interfaces/IAgentCreateOpt
 import AgentsPoolHandler from "./AgentsPoolHandler";
 import Config from "./types/Config";
 import {ISODate} from "./helpers/ISODate";
+import {sessionCleaner} from "./helpers/SessionCleaner";
 
-const config: Config = JSON.parse(readFileSync(__dirname + '/../config.json',  'utf8'));
+const config: Config = JSON.parse(readFileSync(__dirname + '/../config.json', 'utf8'));
+
+if (config.OUTDATED_REPLAYS_CLEANER) {
+    sessionCleaner();
+    setInterval(sessionCleaner, 60 * 60 * 1000);
+}
 
 const webServer = new WebServer(config.SERVER_PORT);
 webServer.setAuthKey(config.AUTH_KEY);
@@ -49,8 +55,7 @@ webServer.post(`/task`, async (request, response) => {
         try {
             const taskResult = await agentsHandler.process(script, options);
             response.json(taskResult);
-        }
-        catch (e: any) {
+        } catch (e: any) {
             response.json({
                 status: 'INIT_ERROR',
                 error: e.toString()
@@ -63,7 +68,5 @@ webServer.post(`/task`, async (request, response) => {
         })
     }
 });
-
-//os.tmpdir()\.secret-agent
 
 webServer.start();
