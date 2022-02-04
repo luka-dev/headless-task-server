@@ -8,10 +8,12 @@
   },
   "scripts": {
     "clean": "rimraf dist",
-    "stamp": "date -u +%Y-%m-%dT%H:%M:%S > buildtimestamp",
+    "stamp": "run-script-os",
+    "stamp:nix": "date -u +%Y-%m-%dT%H:%M:%S > ./dist/buildtimestamp",
+    "stamp:win32": "windwos_generate_stamp.bat > ./dist/buildtimestamp",
     "build": "tsc && npm run stamp",
     "start": "node ./dist/index.js",
-    "replay": "node ./node_modules/.bin/replay"
+    "test": "node ./dist/test.js"
   },
   "repository": {
     "type": "git",
@@ -38,6 +40,7 @@
   },
   "homepage": "https://github.com/luka-dev/secret-agent-task-server#readme",
   "devDependencies": {
+    "@types/command-line-args": "^5.2.0",
     "@types/cors": "^2.8.12",
     "@types/express": "^4.17.13",
     "@types/node": "^16.11.12",
@@ -46,11 +49,13 @@
     "typescript": "^4.5.2"
   },
   "dependencies": {
+    "command-line-args": "^5.2.1",
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "fs": "^0.0.1-security",
     "helmet": "^4.6.0",
     "os": "^0.1.2",
+    "run-script-os": "^1.1.6",
     "secret-agent": "^1.6.1"
   }
 }

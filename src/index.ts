@@ -19,7 +19,7 @@ webServer.setAuthKey(config.AUTH_KEY);
 
 const agentsHandler = new AgentsPoolHandler(config);
 
-const buildTimeStamp: string | null = readFileSync('buildtimestamp', 'utf8').trim() ?? null;
+const buildTimeStamp: string | null = readFileSync('./dist/buildtimestamp', 'utf8').trim() ?? null;
 const runTimeStamp: string | null = (new ISODate()).toString();
 
 webServer.get('/', async (request, response) => {
