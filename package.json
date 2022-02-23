@@ -1,6 +1,6 @@
 {
   "name": "secret-agent-task-server",
-  "version": "0.0.1-poc",
+  "version": "1.0.0",
   "description": "A headless browser task manager based on SecretAgent",
   "main": "dist/index.js",
   "engines": {
