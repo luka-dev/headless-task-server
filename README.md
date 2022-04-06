@@ -38,7 +38,7 @@ npm run start
 - Health Check
 
 > ```http request 
-> GET http://128.0.0.1:8080/
+> GET http://127.0.0.1:8080/
 > ```
 >
 > ```json
@@ -48,7 +48,7 @@ npm run start
 - Stats info
 > ```http request
 > Authorization: AUTH_KEY
-> GET http://128.0.0.1:8080/stats
+> GET http://127.0.0.1:8080/stats
 > ```
 >
 > 
