@@ -5,7 +5,6 @@ export default interface Config {
     "DEFAULT_SESSION_TIMEOUT": number,
     "REPLAY_SERVER_PORT": number,
     "DEFAULT_UPSTREAM_PROXY": string|null,
-    "DEFAULT_SHOW_REPLAY": boolean,
     "DEFAULT_BLOCKED_RESOURCE_TYPES": string[],
     "OUTDATED_REPLAYS_CLEANER": boolean
 }
