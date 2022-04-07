@@ -1,10 +1,10 @@
 {
-  "name": "secret-agent-task-server",
-  "version": "1.0.0",
-  "description": "A headless browser task manager based on SecretAgent",
+  "name": "headless-task-server",
+  "version": "1.0.1",
+  "description": "A headless browser task manager based on Hero",
   "main": "dist/index.js",
   "engines": {
-    "node": ">=14.x"
+    "node": ">=14.x <15"
   },
   "scripts": {
     "clean": "rimraf dist",
@@ -17,7 +17,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/luka-dev/secret-agent-task-server.git"
+    "url": "git+https://github.com/luka-dev/headless-task-server.git"
   },
   "keywords": [
     "headless",
@@ -25,25 +25,30 @@
     "playwright",
     "puppeteer",
     "task",
+    "automation",
     "cluster",
     "scrape",
     "crawl",
     "chrome",
     "chromium",
     "parse",
-    "secret-agent"
+    "hero",
+    "secret-agent",
+    "sa",
+    "render",
+    "js"
   ],
   "author": "luka-dev",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/luka-dev/secret-agent-task-server/issues"
+    "url": "https://github.com/luka-dev/headless-task-server/issues"
   },
-  "homepage": "https://github.com/luka-dev/secret-agent-task-server#readme",
+  "homepage": "https://github.com/luka-dev/headless-task-server#readme",
   "devDependencies": {
     "@types/command-line-args": "^5.2.0",
     "@types/cors": "^2.8.12",
     "@types/express": "^4.17.13",
-    "@types/node": "^16.11.12",
+    "@types/node": "^17.0.23",
     "rimraf": "^3.0.2",
     "ts-node": "^10.4.0",
     "typescript": "^4.5.2"
@@ -52,10 +57,10 @@
     "command-line-args": "^5.2.1",
     "cors": "^2.8.5",
     "express": "^4.17.1",
-    "fs": "^0.0.1-security",
-    "helmet": "^4.6.0",
+    "fs": "^0.0.2",
+    "helmet": "^5.0.2",
     "os": "^0.1.2",
     "run-script-os": "^1.1.6",
-    "secret-agent": "^1.6.1"
+    "secret-agent": "^1.6.4"
   }
 }

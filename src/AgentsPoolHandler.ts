@@ -34,9 +34,6 @@ export default class AgentsPoolHandler {
             options.upstreamProxyUrl = process.env.UPSTREAM_PROXY;
         }
 
-        options.showReplay = this.config.DEFAULT_SHOW_REPLAY;
-
-
         const taskResult: AgentTaskResult = {
             timigs: new TaskTimings(),
             session: null,

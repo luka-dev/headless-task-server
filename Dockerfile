@@ -22,7 +22,7 @@ RUN echo "deb http://httpredir.debian.org/debian buster main contrib non-free" >
     && rm -rf /var/lib/apt/lists/* \
     && apt update
 
-# Fonts from google
+## Fonts from google
 RUN wget -O /tmp/master.tar.gz "https://github.com/google/fonts/archive/main.tar.gz" -q --progress=bar; \
     mkdir -p /tmp/google-fonts/fonts; \
     tar -zxf /tmp/master.tar.gz -C /tmp/google-fonts/fonts; \
@@ -44,19 +44,20 @@ RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
 RUN npm install -g npm
 
 WORKDIR /app/www
-COPY ./ /app/www
+COPY ./dist /app/www/dist
+COPY ./config.json /app/www
+COPY ./package.json /app/www
+COPY ./package-lock.json /app/www
 
-ENV NODE_ENV build
+ENV NODE_ENV production
 RUN npm config set update-notifier false; \
     npm install;
 
 RUN sh $(npx install-browser-deps)
 
-ENV NODE_ENV production
-RUN npm run build; \
-    npm install;
-
 EXPOSE 8080
 
-ENV SA_SHOW_REPLAY=0
+ENV SA_SHOW_REPLAY 0
+ENV SA_SHOW_BROWSER 0
+
 CMD ["npm", "run", "start"]

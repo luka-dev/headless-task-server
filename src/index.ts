@@ -6,6 +6,7 @@ import AgentsPoolHandler from "./AgentsPoolHandler";
 import Config from "./types/Config";
 import {ISODate} from "./helpers/ISODate";
 import {sessionCleaner} from "./helpers/SessionCleaner";
+import {TaskStatus} from "./enum/TaskStatus";
 
 const config: Config = JSON.parse(readFileSync(__dirname + '/../config.json', 'utf8'));
 
@@ -57,14 +58,14 @@ webServer.post(`/task`, async (request, response) => {
             response.json(taskResult);
         } catch (e: any) {
             response.json({
-                status: 'INIT_ERROR',
+                status: TaskStatus.INIT_ERROR,
                 error: e.toString()
             });
         }
 
     } else {
         response.json({
-            status: 'WRONG_INPUT'
+            status: TaskStatus.WRONG_INPUT
         })
     }
 });

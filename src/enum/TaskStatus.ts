@@ -3,4 +3,6 @@ export enum TaskStatus {
     RUNNED = 'RUNNED',
     DONE = 'DONE',
     FAILED = 'FAILED',
+    INIT_ERROR = 'INIT_ERROR',
+    WRONG_INPUT = 'WRONG_INPUT'
 }

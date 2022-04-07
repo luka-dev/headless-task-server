@@ -1,6 +1,6 @@
-# SecretAgent Task Server
+# Headless Task Server
 
-A headless browser task manager based on [SecretAgent](https://github.com/ulixee/secret-agent).
+A headless browser task server based on [SecretAgent](https://github.com/ulixee/secret-agent).
 
 - SecretAgent is a web browser that's built for scraping.
 - This task server allow you to process multiple task simultaneously on single server instance
@@ -19,11 +19,26 @@ npm install
 npm run build
 ```
 
-- Run task server
+- Now we can run it with Docker OR directly on machine
+> NOTE: Viewing browser and replays will work only on machine
 
-```bash
-npm run start
-```
+- Docker way
+> 
+> - Build Docker image
+> ```bash
+> docker build -t headless-task-server . 
+> ```
+> - Run Docker image
+> ```bash
+> docker run -p 8080:8080 headless-task-server
+> ```
+
+- Directly on machine way
+> - Run task server
+>
+> ```bash
+> npm run start
+> ```
 
 - #### Enjoy
 
@@ -33,7 +48,7 @@ npm run start
 >
 > Auth work via header `Authorization`.
 >
-> Auth key loading from `config.json`, `AUTH_KEY` and overwriting with `process.env.AUTH_KEY`
+> Auth key loading from `config.json` and overwriting with env `AUTH_KEY`
 
 - Health Check
 
@@ -47,7 +62,7 @@ npm run start
 
 - Stats info
 > ```http request
-> Authorization: AUTH_KEY
+> Authorization: MySecretAuthKey_IfNoKey_RemoveThisHeader
 > GET http://127.0.0.1:8080/stats
 > ```
 >
@@ -84,13 +99,13 @@ npm run start
 > ```
 - Create Task
 > ```http request
-> Authorization: AUTH_KEY
+> Authorization: MySecretAuthKey_IfNoKey_RemoveThisHeader
 > Content-Type: application/json
 > POST http://127.0.0.1:8080/task
 > 
 > {
 >   "options": {
->     "userAgentString": "My_Custom_User_Agent 2.0"
+>     "upstreamProxyUrl": "http://username:password@proxy.com:80"
 >   },
 >   "script": "await agent.goto('https://example.com/'); agent.output.title = (await agent.document.title);"
 > }
@@ -136,6 +151,17 @@ To run specified test:
 To run all test:
 > npm run test -- -a
 
+ENVs:
+> `SA_SHOW_BROWSER` If true, will show you whole browser 
+
+> `SA_SHOW_REPLAY` If true, will show you replay system
+
+> `AUTH_KEY` Overwrite AUTH_KEY from config.json that used for HTTP Authorization 
+
+> `SERVER_PORT` Overwrite port from config.json 
+
+> `UPSTREAM_PROXY` Set global proxy for all browsers instances
+
 # TODO
-- [ ] Make possible to launch single task server, and several handlers servers.
+- [ ] Migrate from SA to Hero. 
 - [ ] Your ideas. 
