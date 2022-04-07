@@ -1,7 +1,9 @@
 import * as http from "http";
 import * as fs from "fs";
 
-export default function (testName: string, port: number) {
+export default function (testName: string, address: string, authkey: string|null = null) {
+    const url = new URL(address);
+
     try {
         if (fs.existsSync(__dirname + '/../../test/' + testName + '/payload.js')) {
 
@@ -23,13 +25,14 @@ export default function (testName: string, port: number) {
             })
 
             const connection = {
-                hostname: 'localhost',
-                port: port,
+                hostname: url.hostname,
+                port: parseInt(url.port ?? '80'),
                 path: '/task',
                 method: 'POST',
                 headers: {
+                    'Authorization': authkey ?? '',
                     'Content-Type': 'application/json',
-                    'Content-Length': data.length
+                    'Content-Length': data.length,
                 }
             }
 
