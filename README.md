@@ -4,6 +4,7 @@ A headless browser task server based on [SecretAgent](https://github.com/ulixee/
 
 - SecretAgent is a web browser that's built for scraping.
 - This task server allow you to process multiple task simultaneously on single server instance
+- Has [Helper](https://github.com/luka-dev/headless-task-server-php#helpers) for PHP to make request easy 
 
 # Install
 
@@ -151,7 +152,7 @@ To run specified test:
 To run all test:
 > npm run test -- -a
 
-ENVs:
+# ENVs:
 > `SA_SHOW_BROWSER` If true, will show you whole browser 
 
 > `SA_SHOW_REPLAY` If true, will show you replay system
@@ -161,6 +162,9 @@ ENVs:
 > `SERVER_PORT` Overwrite port from config.json 
 
 > `UPSTREAM_PROXY` Set global proxy for all browsers instances
+
+# Helpers
+- [PHP](https://github.com/luka-dev/headless-task-server-php)
 
 # TODO
 - [ ] Migrate from SA to Hero. 
