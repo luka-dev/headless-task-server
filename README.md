@@ -122,10 +122,10 @@ npm run build
 > - Whole Response
 > ```json
 > {
->   "timigs": {
->     "BEGIN_AT": "2022-01-31T12:46:54",
->     "END_AT": "2022-01-31T12:46:56",
->     "CREATED_AT": "2022-01-31T12:46:52"
+>   "timings": {
+>     "begin_at": "2022-01-31T12:46:54",
+>     "end_at": "2022-01-31T12:46:56",
+>     "created_at": "2022-01-31T12:46:52"
 >   },
 >   "session": "dd3d53b0-8293-11ec-8e51-af88f0928944",
 >   "status": "DONE",

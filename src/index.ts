@@ -1,12 +1,12 @@
+import IAgentCreateOptions from "@secret-agent/client/interfaces/IAgentCreateOptions";
+import {sessionCleaner} from "./helpers/SessionCleaner";
+import AgentsPoolHandler from "./AgentsPoolHandler";
+import {TaskStatus} from "./enum/TaskStatus";
+import {ISODate} from "./helpers/ISODate";
 import {WebServer} from "./WebServer";
+import Config from "./types/Config";
 import {readFileSync} from "fs";
 import * as OS from "os";
-import IAgentCreateOptions from "@secret-agent/client/interfaces/IAgentCreateOptions";
-import AgentsPoolHandler from "./AgentsPoolHandler";
-import Config from "./types/Config";
-import {ISODate} from "./helpers/ISODate";
-import {sessionCleaner} from "./helpers/SessionCleaner";
-import {TaskStatus} from "./enum/TaskStatus";
 
 const config: Config = JSON.parse(readFileSync(__dirname + '/../config.json', 'utf8'));
 

@@ -1,10 +1,10 @@
-import {BlockedResourceType, Handler} from "secret-agent";
 import IAgentCreateOptions from "@secret-agent/client/interfaces/IAgentCreateOptions";
-import TaskTimings from "./TaskTimings";
-import {TaskStatus} from "./enum/TaskStatus";
+import {BlockedResourceType, Handler} from "secret-agent";
 import AgentTaskResult from "./types/AgentTaskResult";
-import Config from "./types/Config";
 import AsyncFunction from "./helpers/AsyncFuncion";
+import {TaskStatus} from "./enum/TaskStatus";
+import TaskTimings from "./TaskTimings";
+import Config from "./types/Config";
 
 export default class AgentsPoolHandler {
     private handler: Handler;
@@ -35,7 +35,7 @@ export default class AgentsPoolHandler {
         }
 
         const taskResult: AgentTaskResult = {
-            timigs: new TaskTimings(),
+            timings: new TaskTimings(),
             session: null,
             status: TaskStatus.CREATED,
             output: null
@@ -43,14 +43,14 @@ export default class AgentsPoolHandler {
 
         const agent = await this.handler.createAgent(options);
         taskResult.session = await agent.sessionId;
-        taskResult.timigs.begin();
+        taskResult.timings.begin();
 
         (new Promise((resolve, reject) => {
             setTimeout(() => reject('Script Session Timeout Error'), this.config.DEFAULT_SESSION_TIMEOUT);
         }))
             .catch((exception: any) => {
                 agent?.close();
-                taskResult.timigs.end();
+                taskResult.timings.end();
                 taskResult.status = TaskStatus.FAILED;
                 taskResult.error = exception.toString();
                 return taskResult;
@@ -67,7 +67,7 @@ export default class AgentsPoolHandler {
         }
         finally {
             taskResult.output = agent.output;
-            taskResult.timigs.end();
+            taskResult.timings.end();
             agent?.close();
         }
 

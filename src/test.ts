@@ -1,5 +1,5 @@
-import CommandLineArgs from "command-line-args";
 import MakeTaskRequest from "./helpers/MakeTaskRequest";
+import CommandLineArgs from "command-line-args";
 import {ISODate} from "./helpers/ISODate";
 import Config from "./types/Config";
 import {readFileSync} from "fs";
