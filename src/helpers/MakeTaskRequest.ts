@@ -1,7 +1,7 @@
 import * as http from "http";
 import * as fs from "fs";
 
-export default function (testName: string, address: string, authkey: string|null = null) {
+export default function (testName: string, address: string, authkey: string|null = null, testSerialId: string|number|null = null) {
     const url = new URL(address);
 
     try {
@@ -37,7 +37,7 @@ export default function (testName: string, address: string, authkey: string|null
             }
 
             const req = http.request(connection, res => {
-                console.log(`Status Code: ${res.statusCode}`)
+                console.log(`\n\n${testSerialId !== null ? `Run #${testSerialId}\n` : ''}HTTP Code: ${res.statusCode}`)
 
                 res.on('data', d => {
                     process.stdout.write(d)

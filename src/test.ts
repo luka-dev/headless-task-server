@@ -1,5 +1,6 @@
 import CommandLineArgs from "command-line-args";
 import MakeTaskRequest from "./helpers/MakeTaskRequest";
+import {ISODate} from "./helpers/ISODate";
 import Config from "./types/Config";
 import {readFileSync} from "fs";
 import fs from "fs";
@@ -10,6 +11,7 @@ const optionDefinitions = [
     {name: 'exact', alias: 'e', type: String, multiple: true},
     {name: 'remote', alias: 'r'},
     {name: 'key', alias: 'k'},
+    {name: 'count', alias: 'c', default: 1, type: Number},
 ];
 
 const args = CommandLineArgs(optionDefinitions);
@@ -28,8 +30,10 @@ Arguments:
     -e, --exact     Run exact test by name
     -r, --remote    Set target server (default: http://127.0.0.1:8080)
     -k, --key       Override AUTH_KEY in requests
+    -c, --count     How much times to run each test (default: 1)
     
 Examples:
+    npm run test -- -e "example" -c 5
     npm run test -- -e "example" -e "another"
     npm run test -- --all 
 `);
@@ -44,15 +48,25 @@ Examples:
     if (args.exact !== undefined && args.exact.length) {
         console.log('Running exact tests');
         args.exact.forEach((testName: string) => {
-            MakeTaskRequest(testName, address, authkey);
+            for (let i = 0; i < args.count; i++) {
+                console.log(`Running: ${testName} #${i + 1} At: ${new ISODate()}`);
+                (async () => {
+                    MakeTaskRequest(testName, address, authkey, i + 1);
+                })();
+            }
         });
     } else if (args.all !== undefined) {
         console.log('Running all tests');
         const dir = __dirname + '/../test/';
         fs.readdir(dir, (err, files) => {
             files.forEach(fileName => {
-                console.log('Running:' + fileName);
-                MakeTaskRequest(fileName, address, authkey);
+                console.log('Current tests:' + fileName);
+                for (let i = 0; i < args.count; i++) {
+                    console.log(`Running: ${fileName} #${i + 1} At: ${new ISODate()}`);
+                    (async () => {
+                        MakeTaskRequest(fileName, address, authkey, i + 1);
+                    })();
+                }
             });
         });
     }
