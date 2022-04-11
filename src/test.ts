@@ -48,7 +48,6 @@ Examples:
     if (args.exact !== undefined && args.exact.length) {
         console.log('Running exact tests');
         args.exact.forEach((testName: string) => {
-            console.log(args.count);
             for (let i = 0; i < args.count; i++) {
                 console.log(`Running: ${testName} #${i + 1} At: ${new ISODate()}`);
                 (async () => {
