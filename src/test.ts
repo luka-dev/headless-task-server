@@ -11,7 +11,7 @@ const optionDefinitions = [
     {name: 'exact', alias: 'e', type: String, multiple: true},
     {name: 'remote', alias: 'r'},
     {name: 'key', alias: 'k'},
-    {name: 'count', alias: 'c', default: 1, type: Number},
+    {name: 'count', alias: 'c', defaultValue: 1, type: Number},
 ];
 
 const args = CommandLineArgs(optionDefinitions);
@@ -48,6 +48,7 @@ Examples:
     if (args.exact !== undefined && args.exact.length) {
         console.log('Running exact tests');
         args.exact.forEach((testName: string) => {
+            console.log(args.count);
             for (let i = 0; i < args.count; i++) {
                 console.log(`Running: ${testName} #${i + 1} At: ${new ISODate()}`);
                 (async () => {
