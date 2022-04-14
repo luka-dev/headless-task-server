@@ -48,7 +48,7 @@ export class WebServer {
         return request.get('Authorization') === this.authKey;
     }
 
-    public start(): void {
+    public start(): http.Server {
         if (this.server === null) {
             this.server = this.app.listen(this.port);
             console.log(`Runned on port:${this.port}`);
@@ -63,6 +63,8 @@ export class WebServer {
                 });
             }
         }
+
+        return this.server;
     }
 
     public stop(): void {
@@ -71,7 +73,6 @@ export class WebServer {
             this.server = null;
         }
     }
-
 
     public all(route: string, callback: RouteCallback): void {
         this.app.all(route, callback)
