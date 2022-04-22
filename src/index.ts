@@ -1,5 +1,5 @@
 import IAgentCreateOptions from "@secret-agent/client/interfaces/IAgentCreateOptions";
-import {sessionCleaner} from "./helpers/SessionCleaner";
+import {outdatedSessionsWatcher, sessionCleaner} from "./helpers/SessionCleaner";
 import AgentsPoolHandler from "./AgentsPoolHandler";
 import {TaskStatus} from "./enum/TaskStatus";
 import {ISODate} from "./helpers/ISODate";
@@ -16,7 +16,7 @@ webServer.start()
     .on('listening', () => {
         if (config.OUTDATED_REPLAYS_CLEANER) {
             sessionCleaner();
-            setInterval(sessionCleaner, 60 * 60 * 1000);
+            outdatedSessionsWatcher(config.DEFAULT_SESSION_TIMEOUT);
         }
 
         const agentsHandler = new AgentsPoolHandler(config);
