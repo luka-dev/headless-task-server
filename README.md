@@ -167,5 +167,6 @@ To run all test:
 - [PHP](https://github.com/luka-dev/headless-task-server-php)
 
 # TODO
+- [ ] Find a way, to catch `UnhandledRejection` for each `Agent`
 - [ ] Migrate from SA to Hero. 
 - [ ] Your ideas. 
