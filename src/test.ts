@@ -47,24 +47,28 @@ Examples:
 
     if (args.exact !== undefined && args.exact.length) {
         console.log('Running exact tests');
+        let totalCount = 0;
         args.exact.forEach((testName: string) => {
             for (let i = 0; i < args.count; i++) {
-                console.log(`Running: ${testName} #${i + 1} At: ${new ISODate()}`);
+                totalCount++
+                console.log(`Running: ${testName} #${totalCount} At: ${new ISODate()}`);
                 (async () => {
-                    MakeTaskRequest(testName, address, authkey, i + 1);
+                    MakeTaskRequest(testName, address, authkey, totalCount);
                 })();
             }
         });
     } else if (args.all !== undefined) {
         console.log('Running all tests');
         const dir = __dirname + '/../test/';
+        let totalCount = 0;
         fs.readdir(dir, (err, files) => {
             files.forEach(fileName => {
                 console.log('Current tests:' + fileName);
                 for (let i = 0; i < args.count; i++) {
-                    console.log(`Running: ${fileName} #${i + 1} At: ${new ISODate()}`);
+                    totalCount++
+                    console.log(`Running: ${fileName} #${totalCount} At: ${new ISODate()}`);
                     (async () => {
-                        MakeTaskRequest(fileName, address, authkey, i + 1);
+                        MakeTaskRequest(fileName, address, authkey, totalCount);
                     })();
                 }
             });
