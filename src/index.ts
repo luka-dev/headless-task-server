@@ -25,16 +25,17 @@ webServer.start()
         const buildTimeStamp: string | null = readFileSync('./dist/buildtimestamp', 'utf8').trim() ?? null;
         const runTimeStamp: string | null = (new ISODate()).toString();
 
-        webServer.get('/', async (request, response) => {
+        webServer.get('/', (request, response) => {
             response.json({
                 health: 'ok',
             });
         });
 
-        webServer.get('/stats', async (request, response) => {
+        webServer.get('/stats', (request, response) => {
             response.json({
                 build_timestamp: buildTimeStamp,
                 run_timestamp: runTimeStamp,
+                task_timeout: config.DEFAULT_SESSION_TIMEOUT,
                 server: {
                     uptime: OS.uptime(),
                     platform: OS.platform(),
@@ -55,16 +56,14 @@ webServer.start()
                 const script = request.body.script;
                 const options: IAgentCreateOptions = request.body.options ?? {};
 
-                try {
-                    const taskResult = await agentsHandler.process(script, options);
-                    response.json(taskResult);
-                } catch (e: any) {
-                    response.json({
-                        status: TaskStatus.INIT_ERROR,
-                        error: e.toString()
-                    });
-                }
-
+                agentsHandler.process(script, options)
+                    .then(taskResult => response.json(taskResult))
+                    .catch(exception => {
+                        response.json({
+                            status: TaskStatus.INIT_ERROR,
+                            error: exception instanceof Error ? exception.stack : String(exception)
+                        });
+                    })
             } else {
                 response.json({
                     status: TaskStatus.WRONG_INPUT

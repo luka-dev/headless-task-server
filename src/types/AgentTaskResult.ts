@@ -6,5 +6,5 @@ export default interface AgentTaskResult {
     session: string|null
     status: TaskStatus,
     output: boolean|number|string|object|null,
-    error?: any
+    error?: string
 }

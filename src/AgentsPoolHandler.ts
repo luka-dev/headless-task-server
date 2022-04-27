@@ -37,44 +37,50 @@ export default class AgentsPoolHandler {
         const taskResult: AgentTaskResult = {
             timings: new TaskTimings(),
             session: null,
-            status: TaskStatus.CREATED,
+            status: TaskStatus.INIT_ERROR,
             output: null
         }
 
-        const agent = await this.handler.createAgent(options);
-        taskResult.session = await agent.sessionId;
+        try {
+            const agent = await this.handler.createAgent(options);
 
-        const watcher = new Promise<void>((resolve, reject) => {
-            const context = new AsyncFunction('agent', script);
+            taskResult.session = await agent.sessionId;
+            taskResult.status = TaskStatus.CREATED;
 
-            setTimeout(() => {
-                reject(new Error('Script Session Timeout'));
-            }, this.config.DEFAULT_SESSION_TIMEOUT);
+            const watcher = new Promise<void>((resolve, reject) => {
+                const context = new AsyncFunction('agent', script);
 
-            taskResult.timings.begin();
+                setTimeout(() => {
+                    reject(new Error('Script Session Timeout'));
+                }, this.config.DEFAULT_SESSION_TIMEOUT);
 
-            const runtime = context(agent);
+                taskResult.timings.begin();
 
-            runtime
-                .then(resolve)
-                .catch(reject);
-        });
+                const runtime = context(agent);
 
-        watcher
-            .then(() => {
-                taskResult.status = TaskStatus.DONE;
-            })
-            .catch((exception: any) => {
-                taskResult.status = TaskStatus.FAILED;
-                taskResult.error = exception.toString();
-            })
-            .finally(async () => {
-                taskResult.output = agent.output;
-                taskResult.timings.end();
-                agent?.close();
+                runtime
+                    .then(resolve)
+                    .catch(reject);
             });
 
-        await Promise.allSettled([watcher]);
+            watcher
+                .then(() => {
+                    taskResult.status = TaskStatus.DONE;
+                })
+                .catch((exception: any) => {
+                    taskResult.status = TaskStatus.FAILED;
+                    taskResult.error = exception instanceof Error ? exception.stack : String(exception);
+                })
+                .finally(async () => {
+                    taskResult.output = agent.output;
+                    taskResult.timings.end();
+                    agent?.close();
+                });
+
+            await Promise.allSettled([watcher]);
+        } catch (exception) {
+            taskResult.error = exception instanceof Error ? exception.stack : String(exception);
+        }
 
         return taskResult;
     }
