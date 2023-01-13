@@ -59,7 +59,9 @@ webServer.start()
                 agentsHandler.process(script, options)
                     .then(taskResult => response.json(taskResult))
                     .catch(exception => {
-                        response.json({
+                        response
+                            .status(500)
+                            .json({
                             status: TaskStatus.INIT_ERROR,
                             error: exception instanceof Error ? exception.stack : String(exception)
                         });

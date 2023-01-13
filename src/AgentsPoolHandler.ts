@@ -41,9 +41,9 @@ export default class AgentsPoolHandler {
             output: null
         }
 
-        try {
-            const agent = await this.handler.createAgent(options);
+        const agent = await this.handler.createAgent(options);
 
+        try {
             taskResult.session = await agent.sessionId;
             taskResult.status = TaskStatus.CREATED;
 
