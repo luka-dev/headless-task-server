@@ -62,6 +62,6 @@
     "helmet": "^5.0.2",
     "os": "^0.1.2",
     "run-script-os": "^1.1.6",
-    "secret-agent": "^1.6.4"
+    "secret-agent": "^1.6.5"
   }
 }
