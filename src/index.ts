@@ -1,25 +1,25 @@
-import IAgentCreateOptions from "@secret-agent/client/interfaces/IAgentCreateOptions";
-import {outdatedSessionsWatcher, sessionCleaner} from "./helpers/SessionCleaner";
-import AgentsPoolHandler from "./AgentsPoolHandler";
-import {TaskStatus} from "./enum/TaskStatus";
+import TasksPoolHandler from "./clases/TasksPoolHandler";
+import {TaskStatus} from "./enums/TaskStatus";
 import {ISODate} from "./helpers/ISODate";
-import {WebServer} from "./WebServer";
-import Config from "./types/Config";
+import WebServer from "./clases/WebServer";
 import {readFileSync} from "fs";
 import * as OS from "os";
+import ITasksPoolHandler from "./types/ITasksPoolHandler";
+import IWebServerConfig from "./types/IWebServerConfig";
+import Task from "./clases/Task";
 
-const config: Config = JSON.parse(readFileSync(__dirname + '/../config.json', 'utf8'));
+
+process.on('warning', e => console.warn(e.stack));
+process.on('uncaughtException', e => console.warn(e.stack))
+
+const config: IWebServerConfig & ITasksPoolHandler = JSON.parse(readFileSync(__dirname + '/../config.json', 'utf8'));
 
 const webServer = new WebServer(config.SERVER_PORT);
 webServer.setAuthKey(config.AUTH_KEY);
 webServer.start()
     .on('listening', () => {
-        if (config.OUTDATED_REPLAYS_CLEANER) {
-            sessionCleaner();
-            outdatedSessionsWatcher(config.DEFAULT_SESSION_TIMEOUT);
-        }
 
-        const agentsHandler = new AgentsPoolHandler(config);
+        const tasksHandler = new TasksPoolHandler(config.MAX_CONCURRENCY, config.DEFAULT_SESSION_TIMEOUT)
         console.log('Browser Handler runned');
 
         const buildTimeStamp: string | null = readFileSync('./dist/buildtimestamp', 'utf8').trim() ?? null;
@@ -52,24 +52,51 @@ webServer.start()
         });
 
         webServer.post(`/task`, async (request, response) => {
-            if (typeof request.body.script === 'string' && (typeof request.body.options === 'undefined' || typeof request.body.options === 'object')) {
-                const script = request.body.script;
-                const options: IAgentCreateOptions = request.body.options ?? {};
-
-                agentsHandler.process(script, options)
-                    .then(taskResult => response.json(taskResult))
-                    .catch(exception => {
+            if (typeof request.body.script === 'string'
+                && (typeof request.body.options === 'undefined' || typeof request.body.options === 'object')
+                && (typeof request.body.profile === 'undefined' || typeof request.body.profile === 'object')
+            ) {
+                tasksHandler.process(new Task(
+                    request.body.script,
+                    request.body.options ?? {},
+                    request.body.profile ?? {}
+                ), (task) => {
+                    if (task.status === TaskStatus.DONE) {
+                        response
+                            .status(200)
+                            .json({
+                                status: task.status,
+                                timings: task.timings,
+                                options: task.options,
+                                profile: task.profile,
+                                output: task.output,
+                                error: task.error
+                            });
+                    }
+                    else {
                         response
                             .status(500)
                             .json({
-                            status: TaskStatus.INIT_ERROR,
-                            error: exception instanceof Error ? exception.stack : String(exception)
-                        });
-                    })
+                                status: task.status,
+                                timings: task.timings,
+                                options: task.options,
+                                profile: task.profile,
+                                output: task.output,
+                                error: task.error
+                            });
+                    }
+                });
             } else {
-                response.json({
-                    status: TaskStatus.WRONG_INPUT
-                })
+                response
+                    .status(500)
+                    .json({
+                        status: TaskStatus.BAD_ARGS,
+                        timings: null,
+                        options: null,
+                        profile: null,
+                        output: null,
+                        error: 'Bad arguments'
+                    })
             }
         });
     })

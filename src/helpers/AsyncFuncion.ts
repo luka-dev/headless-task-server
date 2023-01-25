@@ -1,2 +1,1 @@
-const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-export default AsyncFunction;
+export default Object.getPrototypeOf(async function(){}).constructor

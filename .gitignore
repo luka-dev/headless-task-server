@@ -102,7 +102,3 @@ dist
 
 # TernJS port file
 .tern-port
-
-# Not publish all tests scatchs from this playground
-test/*
-!test/example

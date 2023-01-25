@@ -1,8 +1,10 @@
 export enum TaskStatus {
     CREATED = 'CREATED',
-    RUNNED = 'RUNNED',
+    RUNNING = 'RUNNING',
     DONE = 'DONE',
     FAILED = 'FAILED',
+    QUEUE = 'QUEUE',
     INIT_ERROR = 'INIT_ERROR',
-    WRONG_INPUT = 'WRONG_INPUT'
+    TIMEOUT = 'TIMEOUT',
+    BAD_ARGS = 'BAD_ARGS',
 }

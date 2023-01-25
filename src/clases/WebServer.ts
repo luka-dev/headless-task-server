@@ -7,7 +7,8 @@ export interface RouteCallback {
     (request: Request, response: Response, next: NextFunction): void;
 }
 
-export class WebServer {
+
+export default class WebServer {
 
     private authKey: string | null = null;
 
