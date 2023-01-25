@@ -1,8 +1,8 @@
 # Headless Task Server
 
-A headless browser task server based on [SecretAgent](https://github.com/ulixee/secret-agent).
+A headless browser task server based on [Hero](https://github.com/ulixee/hero).
 
-- SecretAgent is a web browser that's built for scraping.
+- Hero is a web browser that's built for scraping.
 - This task server allow you to process multiple task simultaneously on single server instance
 - Has [Helper](https://github.com/luka-dev/headless-task-server-php#helpers) for PHP to make request easy 
 
@@ -108,65 +108,59 @@ npm run build
 >   "options": {
 >     "upstreamProxyUrl": "http://username:password@proxy.com:80"
 >   },
->   "script": "await agent.goto('https://example.com/'); agent.output.title = (await agent.document.title);"
+>   "script": "await agent.goto('https://example.com/'); resolve(await agent.document.title);"
 > }
 > ```
 > - Contain next script
 > ```js
 > await agent.goto('https://example.com/');
-> agent.output.title = (await agent.document.title);
+> resolve(await agent.document.title);
 > ```
 > - Expected Output
 > ```json
-> {"title": "Example Domain"}
+> "Example Domain"
 > ```
 > - Whole Response
 > ```json
 > {
+>   "status": "DONE",  //DONE, FAILED, INIT_ERROR, TIMEOUT, BAD_ARGS
 >   "timings": {
 >     "begin_at": "2022-01-31T12:46:54",
 >     "end_at": "2022-01-31T12:46:56",
 >     "created_at": "2022-01-31T12:46:52"
 >   },
->   "session": "dd3d53b0-8293-11ec-8e51-af88f0928944",
->   "status": "DONE",
->   "output": {
->     "title": "Example Domain"
->   }
+>   "options": {}, //Options that you provided
+>   "profile": {   //Profile of faked user and browser, can be saved for future use as same user.
+>    "cookies": [],
+>    "storage": {
+>      "https://example.com": {
+>        "indexedDB": [],
+>        "localStorage": [],
+>        "sessionStorage": []
+>      }
+>    },
+>    "userAgentString": "Mozilla/5.0 (Windows NT 6.2; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+>    "deviceProfile": {
+>      "deviceMemory": 4,
+>      "videoDevice": {
+>        "deviceId": "b77e4f6d9c9949f7941d53eb325ed152449b0941ba9268d75cae92f181f4995c",
+>        "groupId": "ea79bf7882892b623152146391861a55a91a3269f74d1bfd09eaaf316669cb1e"
+>      },
+>      "maxHeapSize": 2172649472,
+>      "webGlParameters": {
+>        "37445": "Intel Inc.",
+>        "37446": "Intel Iris OpenGL Engine"
+>      }
+>    }
+>   },
+>   "output": "Example Domain", //Output from script
+>   "error": null //Error if any
 > }
 > ```
 
 # How to write any script?
-Welcome to official [DOCS of Secret-Agent](https://secretagent.dev/docs/).
-In payload, you can provide any [options](https://secretagent.dev/docs/basic-interfaces/agent#constructor-1) for `Agent`.
-Script interacting start directly with `agent`.
-All output from script should be saved into `agent.output`.
-
-# How to test?
-Create in `test` folder your own folder, folder name - will be test name.
-Inside folder, script `payload.js` and optionally `options.json` that following [this](https://secretagent.dev/docs/basic-interfaces/agent/#constructor-1) specification.
-
-To run specified test:
-> npm run test -- -e example 
-
-To run all test:
-> npm run test -- -a
-
-# ENVs:
-> `SA_SHOW_BROWSER` If true, will show you whole browser 
-
-> `SA_SHOW_REPLAY` If true, will show you replay system
-
-> `AUTH_KEY` Overwrite AUTH_KEY from config.json that used for HTTP Authorization 
-
-> `SERVER_PORT` Overwrite port from config.json 
-
-> `UPSTREAM_PROXY` Set global proxy for all browsers instances
-
-# Helpers
-- [PHP](https://github.com/luka-dev/headless-task-server-php)
-
-# TODO
-- [ ] Find a way, to catch `UnhandledRejection` for each `Agent`
-- [ ] Migrate from SA to Hero. 
-- [ ] Your ideas. 
+Welcome to official [DOCS of Hero](https://ulixee.org/docs/hero/basic-client/hero).
+In payload, you can provide any [options](https://ulixee.org/docs/hero/basic-client/hero#constructor) for `Hero`.
+Script interacting start directly with `agent` key word, its your `Hero`.
+All output from script should be passed into `resolve` function. 
+If you want to pass error, use `reject` function.
