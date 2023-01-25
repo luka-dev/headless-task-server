@@ -70,7 +70,7 @@ webServer.start()
                                 options: task.options,
                                 profile: task.profile,
                                 output: task.output,
-                                error: task.error
+                                error: task.error ?? null
                             });
                     }
                     else {
@@ -82,7 +82,7 @@ webServer.start()
                                 options: task.options,
                                 profile: task.profile,
                                 output: task.output,
-                                error: task.error
+                                error: task.error ?? null
                             });
                     }
                 });
