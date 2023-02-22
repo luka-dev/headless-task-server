@@ -8,20 +8,28 @@ import { TransportBridge } from '@ulixee/net';
 import Task from "./Task";
 
 export default class TasksPoolHandler {
-    private readonly threads: number;
+    private readonly maxConcurrency: number;
     private readonly sessionTimeout: number;
     private readonly timer?: NodeJS.Timer;
     private readonly connectionToCore: ConnectionToHeroCore;
     private pool: Task[] = [];
     private queue: Task[] = [];
 
-    public constructor(threads: number, sessionTimeout: number = 60000) {
-        this.threads = threads;
+    public constructor(maxConcurrency: number, sessionTimeout: number = 60000) {
+        if (process.env.MAX_CONCURRENCY && !isNaN(parseInt(process.env.MAX_CONCURRENCY))) {
+            maxConcurrency = parseInt(process.env.MAX_CONCURRENCY);
+        }
+
+        if (process.env.SESSION_TIMEOUT && !isNaN(parseInt(process.env.SESSION_TIMEOUT))) {
+            sessionTimeout = parseInt(process.env.SESSION_TIMEOUT);
+        }
+
+        this.maxConcurrency = maxConcurrency;
         this.sessionTimeout = sessionTimeout;
         const bridge = new TransportBridge();
         this.connectionToCore = new ConnectionToHeroCore(bridge.transportToCore, {
-            instanceTimeoutMillis: sessionTimeout,
-            maxConcurrency: threads,
+            instanceTimeoutMillis: this.sessionTimeout,
+            maxConcurrency: this.maxConcurrency,
         });
         Core.addConnection(bridge.transportToClient);
 
@@ -98,7 +106,7 @@ export default class TasksPoolHandler {
 
     private tick(): void {
         this.pool = this.pool.filter((task) => ![TaskStatus.TIMEOUT, TaskStatus.DONE, TaskStatus.FAILED].includes(task.status))
-        if (this.pool.length < this.threads && this.queue.length > 0) {
+        if (this.pool.length < this.maxConcurrency && this.queue.length > 0) {
             const task = this.queue.shift()!;
             this.pool.push(task);
             task.promise!();

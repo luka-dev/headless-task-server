@@ -50,6 +50,11 @@ npm run build
 > Auth work via header `Authorization`.
 >
 > Auth key loading from `config.json` and overwriting with env `AUTH_KEY`
+> 
+> Additional ENVs:
+> > `SESSION_TIMEOUT` - Timeout for session, default `60000` (1 min)
+> > `MAX_CONCURRENCY` - Limit of concurrent tasks, default `15`
+> > > NOTE: If you want to calculate custom value, you can use this formula `MAX_CONCURRENCY = FREE_RAM / 0.5GB`, to prevent stuttering avg formula for CPU is `MAX_CONCURRENCY = CPU_CORES_COUNT * 2`
 
 - Health Check
 
