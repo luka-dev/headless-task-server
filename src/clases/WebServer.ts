@@ -7,11 +7,8 @@ export interface RouteCallback {
     (request: Request, response: Response, next: NextFunction): void;
 }
 
-
 export default class WebServer {
-
     private authKey: string | null = null;
-
     private readonly port: number | null;
     private app: Express;
 

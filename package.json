@@ -62,7 +62,6 @@
   "dependencies": {
     "@ulixee/hero": "^2.0.0-alpha.18",
     "@ulixee/hero-core": "^2.0.0-alpha.18",
-    "@ulixee/miner": "^2.0.0-alpha.18",
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "fs": "^0.0.2",
