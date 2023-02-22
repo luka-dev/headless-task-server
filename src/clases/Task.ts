@@ -11,6 +11,7 @@ export default class Task {
     public output: any = null;
     public error?: any;
     public promise: (() => Promise<void>) | null = null;
+    public isFulfilled: boolean = false;
 
     public constructor(script: string, options: ITaskOptions = {}, profile: IUserProfile = {}) {
         this.script = script;

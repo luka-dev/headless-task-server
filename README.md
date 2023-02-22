@@ -54,8 +54,13 @@ npm run build
 > Additional ENVs:
 > > `SESSION_TIMEOUT` - Timeout for request session, default `60000` (1 min)
 > >
-> > `MAX_CONCURRENCY` - Limit of concurrent tasks, default `15`
-> > > NOTE: If you want to calculate custom value, you can use this formula `MAX_CONCURRENCY = FREE_RAM / 0.5GB`, to prevent stuttering avg formula for CPU is `MAX_CONCURRENCY = CPU_CORES_COUNT * 2`
+> > `MAX_CONCURRENCY` - Limit of concurrent tasks, default `5`
+> > > NOTE: If you want to calculate custom value, you can use this formula `MAX_CONCURRENCY = (FREE_RAM - 1.5GB) / 0.5GB`, also to prevent stuttering avg formula for CPU is `MAX_CONCURRENCY = CPU_CORES_COUNT * 2`
+> >
+> > `CONCURRENCY_DISABLE_MEM_LIMITER` - Memory limiter for concurrency, can be disabled with `true`.
+> > > NOTE: If free memory less than 500MB, new task wouldn't be runned until memory will be free.\
+> > > For example, when chrome instance will be closed after finishing tasks, memory will be free.\
+> > > Due to chrome/chromium specific behavior, memory can't be freed immediately, so we need to wait for it.
 
 - Health Check
 

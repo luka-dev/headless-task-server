@@ -6,6 +6,9 @@ import Core from '@ulixee/hero-core';
 import { TransportBridge } from '@ulixee/net';
 
 import Task from "./Task";
+import * as OS from "os";
+import {bytesToMegabytes} from "../helpers/OSHelper";
+import {envBool, envInt} from "../helpers/EnvHelper";
 
 export default class TasksPoolHandler {
     private readonly maxConcurrency: number;
@@ -16,16 +19,8 @@ export default class TasksPoolHandler {
     private queue: Task[] = [];
 
     public constructor(maxConcurrency: number, sessionTimeout: number = 60000) {
-        if (process.env.MAX_CONCURRENCY && !isNaN(parseInt(process.env.MAX_CONCURRENCY))) {
-            maxConcurrency = parseInt(process.env.MAX_CONCURRENCY);
-        }
-
-        if (process.env.SESSION_TIMEOUT && !isNaN(parseInt(process.env.SESSION_TIMEOUT))) {
-            sessionTimeout = parseInt(process.env.SESSION_TIMEOUT);
-        }
-
-        this.maxConcurrency = maxConcurrency;
-        this.sessionTimeout = sessionTimeout;
+        this.maxConcurrency = envInt('MAX_CONCURRENCY') ?? maxConcurrency;
+        this.sessionTimeout = envInt('SESSION_TIMEOUT') ?? sessionTimeout;
         const bridge = new TransportBridge();
         this.connectionToCore = new ConnectionToHeroCore(bridge.transportToCore, {
             instanceTimeoutMillis: this.sessionTimeout,
@@ -61,32 +56,40 @@ export default class TasksPoolHandler {
                         }
 
                         setTimeout(async () => {
-                            task.timings.end();
-                            task.status = TaskStatus.TIMEOUT;
-                            task.error = new Error('Session Timeout');
-                            reject();
-                            await agent.close();
+                            if (!task.isFulfilled) {
+                                task.isFulfilled = true;
+                                task.timings.end();
+                                task.status = TaskStatus.TIMEOUT;
+                                task.error = new Error('Session Timeout');
+                                reject();
+                                await agent.close();
+                            }
                         }, this.sessionTimeout);
 
                         const runtime = context(agent);
 
                         runtime
                             .then(async (output: any) => {
-                                task.timings.end();
-                                task.status = TaskStatus.DONE;
-                                task.output = output;
-                                task.profile = await agent.exportUserProfile();
-                                resolve();
+                                if (!task.isFulfilled) {
+                                    task.isFulfilled = true;
+                                    task.timings.end();
+                                    task.status = TaskStatus.DONE;
+                                    task.output = output;
+                                    task.profile = await agent.exportUserProfile();
+                                    resolve();
+                                    await agent?.close();
+                                }
                             })
                             .catch(async (error: any) => {
-                                task.timings.end();
-                                task.status = TaskStatus.FAILED;
-                                task.error = error?.toString();
-                                reject();
-                            })
-                            .finally(async () => {
-                                await agent?.close();
-                            })
+                                if (!task.isFulfilled) {
+                                    task.isFulfilled = true;
+                                    task.timings.end();
+                                    task.status = TaskStatus.FAILED;
+                                    task.error = error;
+                                    reject();
+                                    await agent?.close();
+                                }
+                            });
                 }, (error) => {
                     console.error('Agent(Hero) init error', error);
                     task.timings.end();
@@ -107,6 +110,13 @@ export default class TasksPoolHandler {
     private tick(): void {
         this.pool = this.pool.filter((task) => ![TaskStatus.TIMEOUT, TaskStatus.DONE, TaskStatus.FAILED].includes(task.status))
         if (this.pool.length < this.maxConcurrency && this.queue.length > 0) {
+            const freeMemory = bytesToMegabytes(OS.freemem());
+            //Hard limit to avoid crash
+            if (freeMemory < 500 && !envBool('CONCURRENCY_DISABLE_MEM_LIMITER')) {
+                console.warn(`Low memory alert: ${freeMemory}MB, tasks queue: ${this.queue.length}, tasks pool: ${this.pool.length}, new task run prevented to avoid crash.`);
+                return;
+            }
+
             const task = this.queue.shift()!;
             this.pool.push(task);
             task.promise!();
