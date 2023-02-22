@@ -52,7 +52,8 @@ npm run build
 > Auth key loading from `config.json` and overwriting with env `AUTH_KEY`
 > 
 > Additional ENVs:
-> > `SESSION_TIMEOUT` - Timeout for session, default `60000` (1 min)
+> > `SESSION_TIMEOUT` - Timeout for request session, default `60000` (1 min)
+> >
 > > `MAX_CONCURRENCY` - Limit of concurrent tasks, default `15`
 > > > NOTE: If you want to calculate custom value, you can use this formula `MAX_CONCURRENCY = FREE_RAM / 0.5GB`, to prevent stuttering avg formula for CPU is `MAX_CONCURRENCY = CPU_CORES_COUNT * 2`
 
@@ -116,6 +117,7 @@ npm run build
 >   "script": "await agent.goto('https://example.com/'); resolve(await agent.document.title);"
 > }
 > ```
+> > NOTE: Example proxy `upstreamProxyUrl` didn't work, you can use any proxy that support HTTP/SOCKS5 protocol, or you can remove this option to use without proxy.
 > - Contain next script
 > ```js
 > await agent.goto('https://example.com/');
@@ -163,9 +165,9 @@ npm run build
 > }
 > ```
 
-# How to write any script?
-Welcome to official [DOCS of Hero](https://ulixee.org/docs/hero/basic-client/hero).
-In payload, you can provide any [options](https://ulixee.org/docs/hero/basic-client/hero#constructor) for `Hero`.
-Script interacting start directly with `agent` key word, its your `Hero`.
-All output from script should be passed into `resolve` function. 
+# How to write custom script?
+Welcome to official [DOCS of Hero](https://ulixee.org/docs/hero/basic-client/hero), your script should be in payload, property `script` as a `string`.\
+In payload, you can provide any [options](https://ulixee.org/docs/hero/basic-client/hero#constructor) for `Hero`.\
+Script starts in isolated `async` context, with const named `agent`, its your per-request `Hero` instance.\
+All output from script should be passed into `resolve` function.\
 If you want to pass error, use `reject` function.
