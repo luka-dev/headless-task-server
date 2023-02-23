@@ -81,32 +81,37 @@ npm run build
 > 
 > ```json
 > {
->   "build_timestamp": "2022-01-28T15:45:22", //When this build was created
->   "run_timestamp": "2022-01-31T08:38:03", //When was runned
->   "server": {
->     "uptime": 421169,
->     "platform": "darwin",
->     "arch": "arm64"
->   },
->   "hardware": {
->     "cpus": [
->       {
->         "model": "Some CPU name",
->         "speed": 24,
->         "times": {
->           "user": 7719370,
->           "nice": 0,
->           "sys": 8422510,
->           "idle": 37147300,
->           "irq": 0
+>     "timestamp": {
+>         "build": "2023-02-23T11:22:04",
+>         "run": "2023-02-23T11:22:07"
+>     },
+>     "task": {
+>         "timeout": {
+>             "session": 60000,
+>             "queue": 30000
+>         },
+>         "concurrency": 1,
+>         "pool": 0,
+>         "queue": 0,
+>         "counter": {
+>             "total": 4,
+>             "done": 4,
+>             "error": 0,
+>             "session_timeout": 0,
+>             "queue_timeout": 0
 >         }
->       }
->     ],
->     "ram": {
->       "total": 17179869184,
->       "current": 16645472256
+>     },
+>     "server": {
+>         "uptime": 316034,
+>         "platform": "darwin",
+>         "arch": "x64",
+>         "cores": 8,
+>         "ram": {
+>             "total": 8192,
+>             "free": 98,
+>             "used": 8093
+>         }
 >     }
->   }
 > }
 > ```
 - Create Task
