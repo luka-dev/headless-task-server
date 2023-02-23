@@ -1,7 +1,7 @@
 import AsyncFunction from "../helpers/AsyncFuncion";
 import {TaskStatus} from "../enums/TaskStatus";
 
-import Hero, { ConnectionToHeroCore } from '@ulixee/hero';
+import Hero, {BlockedResourceType, ConnectionToHeroCore} from '@ulixee/hero';
 import Core from '@ulixee/hero-core';
 import { TransportBridge } from '@ulixee/net';
 
@@ -13,14 +13,33 @@ import {envBool, envInt} from "../helpers/EnvHelper";
 export default class TasksPoolHandler {
     private readonly maxConcurrency: number;
     private readonly sessionTimeout: number;
+    private readonly queueTimeout: number;
+    private readonly upstreamProxyUrl: string|null;
+    private readonly blockedResourceTypes: BlockedResourceType[];
     private readonly timer?: NodeJS.Timer;
     private readonly connectionToCore: ConnectionToHeroCore;
     private pool: Task[] = [];
     private queue: Task[] = [];
+    private counter = {
+        done: 0,
+        error: 0,
+        session_timeout: 0,
+        queue_timeout: 0,
+    };
 
-    public constructor(maxConcurrency: number, sessionTimeout: number = 60000) {
+    public constructor(
+        maxConcurrency: number,
+        sessionTimeout: number = 60000,
+        queueTimeout: number = 30000,
+        upstreamProxyUrl: string | null = null,
+        blockedResourceTypes: BlockedResourceType[] = []
+    ) {
         this.maxConcurrency = envInt('MAX_CONCURRENCY') ?? maxConcurrency;
         this.sessionTimeout = envInt('SESSION_TIMEOUT') ?? sessionTimeout;
+        this.queueTimeout = envInt('QUEUE_TIMEOUT') ?? queueTimeout;
+        this.upstreamProxyUrl = process.env.upstreamProxyUrl ?? upstreamProxyUrl;
+        this.blockedResourceTypes = blockedResourceTypes;
+
         const bridge = new TransportBridge();
         this.connectionToCore = new ConnectionToHeroCore(bridge.transportToCore, {
             instanceTimeoutMillis: this.sessionTimeout,
@@ -32,71 +51,102 @@ export default class TasksPoolHandler {
     }
 
     public process(task: Task, callback: (task:Task) => any): void {
+        const queueTimer = setTimeout(async () => {
+            task.isFulfilled = true;
+            task.timings.end();
+            console.warn('Task Queue Timeout');
+            task.status = TaskStatus.TIMEOUT;
+            this.counter.queue_timeout++;
+            task.error = new Error('Queue Timeout');
+            callback(task);
+        }, this.queueTimeout);
+
         task.promise = () => {
             const promise = new Promise<void>(async (resolve, reject) => {
+                clearInterval(queueTimer);
                 task.timings.begin();
                 task.status = TaskStatus.RUNNING;
 
                 const context = (function (agent: Hero) {
-                    return new Promise<any>((resolve, reject) => (new AsyncFunction('resolve', 'reject', 'agent', `${task.script};resolve();`))(resolve, reject, agent));
+                    return new Promise<any>((resolve, reject) => (
+                            new AsyncFunction(
+                                'resolve',
+                                'reject',
+                                'agent',
+                                `try{${task.script};resolve();}catch(e){reject(e);}`
+                            )
+                        )
+                        (resolve, reject, agent)
+                    );
                 });
 
                 new Hero({
+                    blockedResourceTypes: this.blockedResourceTypes,
+                    upstreamProxyUrl: this.upstreamProxyUrl ?? undefined,
                     ...task.options,
                     userProfile: task.profile,
                     connectionToCore: this.connectionToCore
-                }).then((agent) => {
-                        if (!(agent instanceof Hero)) {
-                            console.error('Agent is not instance of Hero');
+                })
+                    .then(
+                        (agent) => {
+                            if (!(agent instanceof Hero)) {
+                                console.error('Agent is not instance of Hero');
+                                task.timings.end();
+                                task.status = TaskStatus.INIT_ERROR;
+                                task.error = 'Agent is not instance of Hero';
+                                reject();
+                                return;
+                            }
+
+                            setTimeout(async () => {
+                                if (!task.isFulfilled) {
+                                    task.isFulfilled = true;
+                                    task.timings.end();
+                                    console.warn('Task Execution Session Timeout');
+                                    task.status = TaskStatus.TIMEOUT;
+                                    this.counter.session_timeout++;
+                                    task.error = new Error('Execution Session Timeout');
+                                    reject();
+                                    await agent.close();
+                                }
+                            }, this.sessionTimeout);
+
+                            const runtime = context(agent);
+
+                            runtime
+                                .then(async (output: any) => {
+                                    if (!task.isFulfilled) {
+                                        task.isFulfilled = true;
+                                        task.timings.end();
+                                        task.status = TaskStatus.DONE;
+                                        this.counter.done++;
+                                        task.output = output;
+                                        task.profile = await agent.exportUserProfile();
+                                        resolve();
+                                        await agent?.close();
+                                    }
+                                })
+                                .catch(async (error: any) => {
+                                    if (!task.isFulfilled) {
+                                        task.isFulfilled = true;
+                                        task.timings.end();
+                                        console.warn('Task Error', error);
+                                        task.status = TaskStatus.FAILED;
+                                        this.counter.error++;
+                                        task.error = error;
+                                        reject();
+                                        await agent?.close();
+                                    }
+                                });
+                        },
+                        (error) => {
+                            console.error('Agent(Hero) init error', error);
                             task.timings.end();
                             task.status = TaskStatus.INIT_ERROR;
-                            task.error = 'Agent is not instance of Hero';
+                            task.error = error;
                             reject();
-                            return;
                         }
-
-                        setTimeout(async () => {
-                            if (!task.isFulfilled) {
-                                task.isFulfilled = true;
-                                task.timings.end();
-                                task.status = TaskStatus.TIMEOUT;
-                                task.error = new Error('Session Timeout');
-                                reject();
-                                await agent.close();
-                            }
-                        }, this.sessionTimeout);
-
-                        const runtime = context(agent);
-
-                        runtime
-                            .then(async (output: any) => {
-                                if (!task.isFulfilled) {
-                                    task.isFulfilled = true;
-                                    task.timings.end();
-                                    task.status = TaskStatus.DONE;
-                                    task.output = output;
-                                    task.profile = await agent.exportUserProfile();
-                                    resolve();
-                                    await agent?.close();
-                                }
-                            })
-                            .catch(async (error: any) => {
-                                if (!task.isFulfilled) {
-                                    task.isFulfilled = true;
-                                    task.timings.end();
-                                    task.status = TaskStatus.FAILED;
-                                    task.error = error;
-                                    reject();
-                                    await agent?.close();
-                                }
-                            });
-                }, (error) => {
-                    console.error('Agent(Hero) init error', error);
-                    task.timings.end();
-                    task.status = TaskStatus.INIT_ERROR;
-                    task.error = error;
-                    reject();
-                });
+                    );
             });
             promise.finally(() => {callback(task)});
             return promise;
@@ -106,9 +156,10 @@ export default class TasksPoolHandler {
         this.queue.push(task);
 
     }
-
     private tick(): void {
         this.pool = this.pool.filter((task) => ![TaskStatus.TIMEOUT, TaskStatus.DONE, TaskStatus.FAILED].includes(task.status))
+        this.queue = this.queue.filter((task) => TaskStatus.TIMEOUT !== task.status);
+
         if (this.pool.length < this.maxConcurrency && this.queue.length > 0) {
             const freeMemory = bytesToMegabytes(OS.freemem());
             //Hard limit to avoid crash
@@ -122,9 +173,19 @@ export default class TasksPoolHandler {
             task.promise!();
         }
     }
-
     public close(): void {
         clearInterval(this.timer);
     }
-
+    public getPoolLength(): number {
+        return this.pool.length;
+    }
+    public getQueueLength(): number {
+        return this.queue.length;
+    }
+    public getCounter() {
+        return this.counter;
+    }
+    public getCounterTotal(): number {
+        return this.counter.done + this.counter.error + this.counter.session_timeout + this.counter.queue_timeout;
+    }
 }

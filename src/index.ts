@@ -7,6 +7,8 @@ import * as OS from "os";
 import ITasksPoolHandler from "./types/ITasksPoolHandler";
 import IWebServerConfig from "./types/IWebServerConfig";
 import Task from "./clases/Task";
+import {envInt} from "./helpers/EnvHelper";
+import {bytesToMegabytes} from "./helpers/OSHelper";
 
 
 process.on('warning', e => console.warn(e.stack));
@@ -19,7 +21,13 @@ webServer.setAuthKey(config.AUTH_KEY);
 webServer.start()
     .on('listening', () => {
 
-        const tasksHandler = new TasksPoolHandler(config.MAX_CONCURRENCY, config.DEFAULT_SESSION_TIMEOUT)
+        const tasksHandler = new TasksPoolHandler(
+            config.DEFAULT_MAX_CONCURRENCY,
+            config.DEFAULT_SESSION_TIMEOUT,
+            config.DEFAULT_QUEUE_TIMEOUT,
+            config.DEFAULT_UPSTREAM_PROXY_URL,
+            config.DEFAULT_BLOCKED_RESOURCE_TYPES
+        );
         console.log('Browser Handler runned');
 
         const buildTimeStamp: string | null = readFileSync('./dist/buildtimestamp', 'utf8').trim() ?? null;
@@ -32,20 +40,34 @@ webServer.start()
         });
 
         webServer.get('/stats', (request, response) => {
+            const freeMem = OS.freemem();
             response.json({
-                build_timestamp: buildTimeStamp,
-                run_timestamp: runTimeStamp,
-                task_timeout: config.DEFAULT_SESSION_TIMEOUT,
+                timestamp: {
+                    build: buildTimeStamp,
+                    run: runTimeStamp
+                },
+                task: {
+                    timeout: {
+                        session: envInt('SESSION_TIMEOUT') ?? config.DEFAULT_SESSION_TIMEOUT,
+                        queue: envInt('QUEUE_TIMEOUT') ?? config.DEFAULT_QUEUE_TIMEOUT,
+                    },
+                    concurrency: envInt('MAX_CONCURRENCY') ?? config.DEFAULT_MAX_CONCURRENCY,
+                    pool: tasksHandler.getPoolLength(),
+                    queue: tasksHandler.getQueueLength(),
+                    counter: {
+                        total: tasksHandler.getCounterTotal(),
+                        ...tasksHandler.getCounter()
+                    }
+                },
                 server: {
                     uptime: OS.uptime(),
                     platform: OS.platform(),
-                    arch: OS.arch()
-                },
-                hardware: {
-                    cpus: OS.cpus(),
+                    arch: OS.arch(),
+                    cores: OS.cpus().length,
                     ram: {
-                        total: OS.totalmem(),
-                        current: OS.totalmem() - OS.freemem(),
+                        total: bytesToMegabytes(OS.totalmem()),
+                        free: bytesToMegabytes(freeMem),
+                        used: bytesToMegabytes(OS.totalmem() - freeMem),
                     }
                 }
             });
@@ -70,7 +92,7 @@ webServer.start()
                                 options: task.options,
                                 profile: task.profile,
                                 output: task.output,
-                                error: task.error ?? null
+                                error: task.error?.toString() ?? null
                             });
                     }
                     else {
@@ -82,7 +104,7 @@ webServer.start()
                                 options: task.options,
                                 profile: task.profile,
                                 output: task.output,
-                                error: task.error ?? null
+                                error: task.error?.toString() ?? null
                             });
                     }
                 });
