@@ -9,7 +9,7 @@ RUN echo "deb http://httpredir.debian.org/debian buster main contrib non-free" >
     && echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections \
     && apt-get update
 
-RUN apt-get install -y \
+RUN apt-get install -y --allow-downgrades \
         wget \
         fonts-arphic-ukai \
         fonts-arphic-uming \
@@ -21,9 +21,12 @@ RUN apt-get install -y \
         ttf-wqy-zenhei \
         ttf-mscorefonts-installer \
         fonts-freefont-ttf \
+        libudev1=241-7~deb10u8 \
     && apt-get clean \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
+
+#libudev1 - hot fix for chrome 109, remove when install dep will be fixed
 
 ## Fonts from google
 #RUN wget -O /tmp/master.tar.gz "https://github.com/google/fonts/archive/main.tar.gz" -q --progress=bar; \
@@ -32,7 +35,6 @@ RUN apt-get install -y \
 #    find /tmp/google-fonts/fonts/ -type f -name "*.ttf" -exec cp {} "/usr/local/share/fonts/" \\\;; \
 #    rm -f /tmp/master.tar.gz; \
 #    rm -rf /tmp/google-fonts;
-
 
 WORKDIR /app/www
 RUN mkdir -p /opt/bin && chmod +x /dev/shm
