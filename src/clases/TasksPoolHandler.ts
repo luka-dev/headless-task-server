@@ -46,8 +46,8 @@ export default class TasksPoolHandler {
             maxConcurrency: this.maxConcurrency,
         });
 
-        Core.onShutdown = () => {
-            clearInterval(this.timer);
+        const onDisconnected = () => {
+            this.close();
             console.error('Hero Core Shutdown');
             this.queue.forEach((task: Task) => {
                 task.isFulfilled = true;
@@ -57,7 +57,10 @@ export default class TasksPoolHandler {
                 this.counter.error++;
             });
             process.exit(1);
-        };
+        }
+
+        this.connectionToCore.on('disconnected', onDisconnected)
+        Core.onShutdown = onDisconnected;
 
         Core.addConnection(bridge.transportToClient);
 
@@ -77,9 +80,6 @@ export default class TasksPoolHandler {
 
         task.promise = () => {
             const promise = new Promise<void>(async (resolve, reject) => {
-                clearInterval(queueTimer);
-                task.timings.begin();
-                task.status = TaskStatus.RUNNING;
 
                 const context = (function (agent: Hero) {
                     return new Promise<any>((resolve, reject) => (
@@ -93,20 +93,6 @@ export default class TasksPoolHandler {
                         (resolve, reject, agent)
                     );
                 });
-
-                let hero: Hero;
-                setTimeout(async () => {
-                    if (!task.isFulfilled) {
-                        task.isFulfilled = true;
-                        task.timings.end();
-                        console.warn('Task Execution Session Timeout');
-                        task.status = TaskStatus.TIMEOUT;
-                        this.counter.session_timeout++;
-                        task.error = new Error('Execution Session Timeout');
-                        reject();
-                        await hero.close();
-                    }
-                }, this.sessionTimeout);
 
                 new Hero({
                     blockedResourceTypes: this.blockedResourceTypes,
@@ -127,7 +113,22 @@ export default class TasksPoolHandler {
                                 return;
                             }
 
-                            hero = agent;
+                            clearInterval(queueTimer);
+                            task.timings.begin();
+                            task.status = TaskStatus.RUNNING;
+
+                            setTimeout(async () => {
+                                if (!task.isFulfilled) {
+                                    task.isFulfilled = true;
+                                    task.timings.end();
+                                    console.warn('Task Execution Session Timeout');
+                                    task.status = TaskStatus.TIMEOUT;
+                                    this.counter.session_timeout++;
+                                    task.error = new Error('Execution Session Timeout');
+                                    reject();
+                                    await agent.close();
+                                }
+                            }, this.sessionTimeout);
 
                             const runtime = context(agent);
 
