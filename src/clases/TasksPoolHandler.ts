@@ -45,6 +45,20 @@ export default class TasksPoolHandler {
             instanceTimeoutMillis: this.sessionTimeout,
             maxConcurrency: this.maxConcurrency,
         });
+
+        Core.onShutdown = () => {
+            clearInterval(this.timer);
+            console.error('Hero Core Shutdown');
+            this.queue.forEach((task: Task) => {
+                task.isFulfilled = true;
+                task.timings.end();
+                task.status = TaskStatus.FAILED;
+                task.error = new Error('Hero Core Shutdown');
+                this.counter.error++;
+            });
+            process.exit(1);
+        };
+
         Core.addConnection(bridge.transportToClient);
 
         this.timer = setInterval(() => this.tick(), 10);
