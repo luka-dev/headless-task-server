@@ -3,7 +3,7 @@ import {TaskStatus} from "../enums/TaskStatus";
 
 import Hero, {BlockedResourceType, ConnectionToHeroCore} from '@ulixee/hero';
 import Core from '@ulixee/hero-core';
-import { TransportBridge } from '@ulixee/net';
+import {TransportBridge} from '@ulixee/net';
 
 import Task from "./Task";
 import * as OS from "os";
@@ -178,7 +178,9 @@ export default class TasksPoolHandler {
 
     }
     private tick(): void {
-        this.pool = this.pool.filter((task) => [TaskStatus.CREATED, TaskStatus.RUNNING].includes(task.status))
+        console.log(this.pool);
+        this.pool = this.pool.filter((task) => [TaskStatus.CREATED, TaskStatus.RUNNING, TaskStatus.QUEUE].includes(task.status))
+        console.log(this.pool);
         this.queue = this.queue.filter((task) => TaskStatus.TIMEOUT !== task.status);
 
         if (this.pool.length < this.maxConcurrency && this.queue.length > 0) {
