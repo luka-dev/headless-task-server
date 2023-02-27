@@ -80,6 +80,20 @@ export default class TasksPoolHandler {
                     );
                 });
 
+                let hero: Hero;
+                setTimeout(async () => {
+                    if (!task.isFulfilled) {
+                        task.isFulfilled = true;
+                        task.timings.end();
+                        console.warn('Task Execution Session Timeout');
+                        task.status = TaskStatus.TIMEOUT;
+                        this.counter.session_timeout++;
+                        task.error = new Error('Execution Session Timeout');
+                        reject();
+                        await hero.close();
+                    }
+                }, this.sessionTimeout);
+
                 new Hero({
                     blockedResourceTypes: this.blockedResourceTypes,
                     upstreamProxyUrl: this.upstreamProxyUrl ?? undefined,
@@ -94,22 +108,12 @@ export default class TasksPoolHandler {
                                 task.timings.end();
                                 task.status = TaskStatus.INIT_ERROR;
                                 task.error = 'Agent is not instance of Hero';
+                                agent?.close();
                                 reject();
                                 return;
                             }
 
-                            setTimeout(async () => {
-                                if (!task.isFulfilled) {
-                                    task.isFulfilled = true;
-                                    task.timings.end();
-                                    console.warn('Task Execution Session Timeout');
-                                    task.status = TaskStatus.TIMEOUT;
-                                    this.counter.session_timeout++;
-                                    task.error = new Error('Execution Session Timeout');
-                                    reject();
-                                    await agent.close();
-                                }
-                            }, this.sessionTimeout);
+                            hero = agent;
 
                             const runtime = context(agent);
 
@@ -157,7 +161,7 @@ export default class TasksPoolHandler {
 
     }
     private tick(): void {
-        this.pool = this.pool.filter((task) => ![TaskStatus.TIMEOUT, TaskStatus.DONE, TaskStatus.FAILED].includes(task.status))
+        this.pool = this.pool.filter((task) => [TaskStatus.CREATED, TaskStatus.RUNNING].includes(task.status))
         this.queue = this.queue.filter((task) => TaskStatus.TIMEOUT !== task.status);
 
         if (this.pool.length < this.maxConcurrency && this.queue.length > 0) {
