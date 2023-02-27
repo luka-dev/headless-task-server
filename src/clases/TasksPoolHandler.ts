@@ -178,9 +178,7 @@ export default class TasksPoolHandler {
 
     }
     private tick(): void {
-        console.log(this.pool);
         this.pool = this.pool.filter((task) => [TaskStatus.CREATED, TaskStatus.RUNNING, TaskStatus.QUEUE].includes(task.status))
-        console.log(this.pool);
         this.queue = this.queue.filter((task) => TaskStatus.TIMEOUT !== task.status);
 
         if (this.pool.length < this.maxConcurrency && this.queue.length > 0) {
