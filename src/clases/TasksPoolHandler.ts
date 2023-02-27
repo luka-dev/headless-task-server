@@ -43,8 +43,10 @@ export default class TasksPoolHandler {
         const bridge = new TransportBridge();
         this.connectionToCore = new ConnectionToHeroCore(bridge.transportToCore, {
             instanceTimeoutMillis: this.sessionTimeout,
-            maxConcurrency: this.maxConcurrency,
+            maxConcurrency: this.maxConcurrency * 2,
         });
+
+        Core.clearIdleConnectionsAfterMillis = this.sessionTimeout;
 
         const onDisconnected = () => {
             this.close();
