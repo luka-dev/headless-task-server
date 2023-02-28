@@ -46,24 +46,8 @@ export default class TasksPoolHandler {
             maxConcurrency: this.maxConcurrency * 2,
         });
 
-        Core.clearIdleConnectionsAfterMillis = this.sessionTimeout;
-
-        const onDisconnected = () => {
-            this.close();
-            console.error('Hero Core Shutdown');
-            this.queue.forEach((task: Task) => {
-                task.isFulfilled = true;
-                task.timings.end();
-                task.status = TaskStatus.FAILED;
-                task.error = new Error('Hero Core Shutdown');
-                this.counter.error++;
-            });
-            process.exit(1);
-        }
-
-        this.connectionToCore.on('disconnected', onDisconnected)
-        Core.onShutdown = onDisconnected;
-
+        this.connectionToCore.on('disconnected', this.onDisconnected)
+        Core.onShutdown = this.onDisconnected;
         Core.addConnection(bridge.transportToClient);
 
         this.timer = setInterval(() => this.tick(), 10);
@@ -104,13 +88,13 @@ export default class TasksPoolHandler {
                     connectionToCore: this.connectionToCore
                 })
                     .then(
-                        (agent) => {
+                        async (agent) => {
                             if (!(agent instanceof Hero)) {
                                 console.error('Agent is not instance of Hero');
                                 task.timings.end();
                                 task.status = TaskStatus.INIT_ERROR;
                                 task.error = 'Agent is not instance of Hero';
-                                agent?.close();
+                                await agent?.close();
                                 reject();
                                 return;
                             }
@@ -127,8 +111,8 @@ export default class TasksPoolHandler {
                                     task.status = TaskStatus.TIMEOUT;
                                     this.counter.session_timeout++;
                                     task.error = new Error('Execution Session Timeout');
-                                    reject();
                                     await agent.close();
+                                    reject();
                                 }
                             }, this.sessionTimeout);
 
@@ -143,8 +127,8 @@ export default class TasksPoolHandler {
                                         this.counter.done++;
                                         task.output = output;
                                         task.profile = await agent.exportUserProfile();
-                                        resolve();
                                         await agent?.close();
+                                        resolve();
                                     }
                                 })
                                 .catch(async (error: any) => {
@@ -155,8 +139,8 @@ export default class TasksPoolHandler {
                                         task.status = TaskStatus.FAILED;
                                         this.counter.error++;
                                         task.error = error;
-                                        reject();
                                         await agent?.close();
+                                        reject();
                                     }
                                 });
                         },
@@ -166,6 +150,7 @@ export default class TasksPoolHandler {
                             task.status = TaskStatus.INIT_ERROR;
                             task.error = error;
                             reject();
+                            this.onDisconnected();
                         }
                     );
             });
@@ -194,6 +179,20 @@ export default class TasksPoolHandler {
             task.promise!();
         }
     }
+
+    private onDisconnected(): void {
+        this.close();
+        console.error('Hero Core Shutdown');
+        this.queue.forEach((task: Task) => {
+            task.isFulfilled = true;
+            task.timings.end();
+            task.status = TaskStatus.FAILED;
+            task.error = new Error('Hero Core Shutdown');
+            this.counter.error++;
+        });
+        process.exit(1);
+    }
+
     public close(): void {
         clearInterval(this.timer);
     }
