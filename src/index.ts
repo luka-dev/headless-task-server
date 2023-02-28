@@ -9,8 +9,9 @@ import IWebServerConfig from "./types/IWebServerConfig";
 import Task from "./clases/Task";
 import {envInt} from "./helpers/EnvHelper";
 import {bytesToMegabytes} from "./helpers/OSHelper";
+import Logger from "./clases/Logger";
 
-
+Logger.hook();
 process.on('warning', e => console.warn(e.stack));
 process.on('uncaughtException', e => console.warn(e.stack))
 
@@ -72,6 +73,10 @@ webServer.start()
                 }
             });
         });
+
+        webServer.get('/logs', (request, response) => {
+            response.json(Logger.getRows());
+        })
 
         webServer.post(`/task`, async (request, response) => {
             if (typeof request.body.script === 'string'
