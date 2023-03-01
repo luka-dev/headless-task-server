@@ -113,7 +113,24 @@ npm run build
 >         }
 >     }
 > }
+
+
+- Last 1000 logs
+> ```http request
+> Authorization: MySecretAuthKey_IfNoKey_RemoveThisHeader
+> GET http://127.0.0.1:8080/logs
 > ```
+>
+>
+> ```json
+> [
+>   "Runned on port:8080",
+>   "APP Runned in InSecure mode!",
+>   "Browser Handler runned"
+> ]
+> ```
+
+
 - Create Task
 > ```http request
 > Authorization: MySecretAuthKey_IfNoKey_RemoveThisHeader
