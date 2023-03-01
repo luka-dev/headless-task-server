@@ -10,6 +10,7 @@ import * as OS from "os";
 import {bytesToMegabytes} from "../helpers/OSHelper";
 import {envBool, envInt} from "../helpers/EnvHelper";
 import {IpLookupServices} from "@ulixee/default-browser-emulator/lib/helpers/lookupPublicIp";
+import TimeoutError from "@ulixee/commons/interfaces/TimeoutError"
 
 export default class TasksPoolHandler {
     private readonly maxConcurrency: number;
@@ -85,7 +86,7 @@ export default class TasksPoolHandler {
                     blockedResourceTypes: this.blockedResourceTypes,
                     upstreamProxyUrl: this.upstreamProxyUrl ?? undefined,
                     upstreamProxyIpMask: {
-                      ipLookupService: IpLookupServices.ipify,
+                      ipLookupService: IpLookupServices.aws,
                     },
                     ...task.options,
                     showChrome: false,
@@ -94,6 +95,7 @@ export default class TasksPoolHandler {
                 })
                     .then(
                         async (agent) => {
+                            clearInterval(queueTimer);
                             const agentClose = async () => {
                                 if (agent instanceof Hero) {
                                     try {
@@ -109,9 +111,9 @@ export default class TasksPoolHandler {
                             if (!(agent instanceof Hero)) {
                                 console.error('Agent is not instance of Hero');
                                 task.timings.end();
-                                task.status = TaskStatus.INIT_ERROR;
                                 task.error = 'Agent is not instance of Hero';
                                 await agentClose();
+                                task.status = TaskStatus.INIT_ERROR;
                                 reject();
                                 return;
                             }
@@ -122,7 +124,6 @@ export default class TasksPoolHandler {
                                 return;
                             }
 
-                            clearInterval(queueTimer);
                             task.timings.begin();
                             task.status = TaskStatus.RUNNING;
 
@@ -131,10 +132,10 @@ export default class TasksPoolHandler {
                                     task.isFulfilled = true;
                                     task.timings.end();
                                     console.warn('Task Execution Session Timeout');
-                                    task.status = TaskStatus.TIMEOUT;
                                     this.counter.session_timeout++;
                                     task.error = new Error('Execution Session Timeout');
                                     await agentClose();
+                                    task.status = TaskStatus.TIMEOUT;
                                     reject();
                                 }
                             }, this.sessionTimeout);
@@ -146,11 +147,11 @@ export default class TasksPoolHandler {
                                     if (!task.isFulfilled) {
                                         task.isFulfilled = true;
                                         task.timings.end();
-                                        task.status = TaskStatus.DONE;
                                         this.counter.done++;
                                         task.output = output;
                                         task.profile = await agent.exportUserProfile();
                                         await agentClose();
+                                        task.status = TaskStatus.DONE;
                                         resolve();
                                     }
                                 })
@@ -159,21 +160,27 @@ export default class TasksPoolHandler {
                                         task.isFulfilled = true;
                                         task.timings.end();
                                         console.warn('Task Error', error);
-                                        task.status = TaskStatus.FAILED;
                                         this.counter.error++;
                                         task.error = error;
                                         await agentClose();
+                                        task.status = TaskStatus.FAILED;
                                         reject();
                                     }
                                 });
                         },
                         (error) => {
-                            console.error('Agent(Hero) init error', error);
+                            clearInterval(queueTimer);
+                            task.isFulfilled = true;
                             task.timings.end();
                             task.status = TaskStatus.INIT_ERROR;
                             task.error = error;
                             reject();
-                            this.onDisconnected();
+                            if (error instanceof TimeoutError) {
+                                console.warn('Agent(Hero) init error (proxy)', error);
+                            } else {
+                                console.error('Agent(Hero) init error', error);
+                                this.onDisconnected();
+                            }
                         }
                     );
             });
