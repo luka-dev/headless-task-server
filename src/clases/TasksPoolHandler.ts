@@ -9,6 +9,7 @@ import Task from "./Task";
 import * as OS from "os";
 import {bytesToMegabytes} from "../helpers/OSHelper";
 import {envBool, envInt} from "../helpers/EnvHelper";
+import {IpLookupServices} from "@ulixee/default-browser-emulator/lib/helpers/lookupPublicIp";
 
 export default class TasksPoolHandler {
     private readonly maxConcurrency: number;
@@ -26,7 +27,6 @@ export default class TasksPoolHandler {
         session_timeout: 0,
         queue_timeout: 0,
     };
-
     public constructor(
         maxConcurrency: number,
         sessionTimeout: number = 60000,
@@ -48,6 +48,7 @@ export default class TasksPoolHandler {
 
         this.connectionToCore.on('disconnected', this.onDisconnected)
         Core.onShutdown = this.onDisconnected;
+
         Core.addConnection(bridge.transportToClient);
 
         this.timer = setInterval(() => this.tick(), 10);
@@ -83,18 +84,40 @@ export default class TasksPoolHandler {
                 new Hero({
                     blockedResourceTypes: this.blockedResourceTypes,
                     upstreamProxyUrl: this.upstreamProxyUrl ?? undefined,
+                    upstreamProxyIpMask: {
+                      ipLookupService: IpLookupServices.ipify,
+                    },
                     ...task.options,
+                    showChrome: false,
                     userProfile: task.profile,
                     connectionToCore: this.connectionToCore
                 })
                     .then(
                         async (agent) => {
+                            const agentClose = async () => {
+                                if (agent instanceof Hero) {
+                                    try {
+                                        await agent.close();
+                                    } catch (error) {
+                                        console.error('Error closing agent', error);
+                                    }
+                                } else {
+                                    console.warn('Wierd agent', agent);
+                                }
+                            }
+
                             if (!(agent instanceof Hero)) {
                                 console.error('Agent is not instance of Hero');
                                 task.timings.end();
                                 task.status = TaskStatus.INIT_ERROR;
                                 task.error = 'Agent is not instance of Hero';
-                                await agent?.close();
+                                await agentClose();
+                                reject();
+                                return;
+                            }
+
+                            if (task.isFulfilled) {
+                                await agentClose();
                                 reject();
                                 return;
                             }
@@ -111,7 +134,7 @@ export default class TasksPoolHandler {
                                     task.status = TaskStatus.TIMEOUT;
                                     this.counter.session_timeout++;
                                     task.error = new Error('Execution Session Timeout');
-                                    await agent.close();
+                                    await agentClose();
                                     reject();
                                 }
                             }, this.sessionTimeout);
@@ -127,7 +150,7 @@ export default class TasksPoolHandler {
                                         this.counter.done++;
                                         task.output = output;
                                         task.profile = await agent.exportUserProfile();
-                                        await agent?.close();
+                                        await agentClose();
                                         resolve();
                                     }
                                 })
@@ -139,7 +162,7 @@ export default class TasksPoolHandler {
                                         task.status = TaskStatus.FAILED;
                                         this.counter.error++;
                                         task.error = error;
-                                        await agent?.close();
+                                        await agentClose();
                                         reject();
                                     }
                                 });
@@ -160,7 +183,6 @@ export default class TasksPoolHandler {
 
         task.status = TaskStatus.QUEUE;
         this.queue.push(task);
-
     }
     private tick(): void {
         this.pool = this.pool.filter((task) => [TaskStatus.CREATED, TaskStatus.RUNNING, TaskStatus.QUEUE].includes(task.status))
