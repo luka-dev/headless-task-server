@@ -9,6 +9,8 @@ RUN echo "deb http://httpredir.debian.org/debian buster main contrib non-free" >
     && echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections \
     && apt-get update
 
+
+#libudev1 - hot fix downgade for chrome 109, remove when install dep will be fixed
 RUN apt-get install -y --allow-downgrades \
         wget \
         fonts-arphic-ukai \
@@ -25,8 +27,6 @@ RUN apt-get install -y --allow-downgrades \
     && apt-get clean \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
-
-#libudev1 - hot fix for chrome 109, remove when install dep will be fixed
 
 ## Fonts from google
 #RUN wget -O /tmp/master.tar.gz "https://github.com/google/fonts/archive/main.tar.gz" -q --progress=bar; \
@@ -46,6 +46,10 @@ COPY ./package-lock.json /app/www
 
 #ENV ULX_DEBUG true
 #ENV DEBUG true
+
+#for testing on low memory machines
+#ENV CONCURRENCY_DISABLE_MEM_LIMITER true
+
 ENV NODE_ENV production
 ENV ULX_NO_CHROME_SANDBOX true
 
