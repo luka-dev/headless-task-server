@@ -27,11 +27,11 @@ npm run build
 > 
 > - Build Docker image
 > ```bash
-> docker build -t headless-task-server . 
+> docker build -t headless-task-server:latest . 
 > ```
 > - Run Docker image
 > ```bash
-> docker run -p 8080:8080 headless-task-server
+> docker run -p 8080:8080 headless-task-server:latest
 > ```
 
 - Directly on machine way

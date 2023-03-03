@@ -19,6 +19,7 @@ const config: IWebServerConfig & ITasksPoolHandler = JSON.parse(readFileSync(__d
 
 const webServer = new WebServer(config.SERVER_PORT);
 webServer.setAuthKey(config.AUTH_KEY);
+
 webServer.start()
     .on('listening', () => {
 

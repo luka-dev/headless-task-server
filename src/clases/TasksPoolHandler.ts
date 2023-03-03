@@ -11,6 +11,7 @@ import {bytesToMegabytes} from "../helpers/OSHelper";
 import {envBool, envInt} from "../helpers/EnvHelper";
 import {IpLookupServices} from "@ulixee/default-browser-emulator/lib/helpers/lookupPublicIp";
 import TimeoutError from "@ulixee/commons/interfaces/TimeoutError"
+import Logger from "./Logger";
 
 export default class TasksPoolHandler {
     private readonly maxConcurrency: number;
@@ -219,7 +220,10 @@ export default class TasksPoolHandler {
             task.error = new Error('Hero Core Shutdown');
             this.counter.error++;
         });
-        process.exit(1);
+        Logger.sendLogs()
+            .finally(() => {
+                process.exit(1);
+            });
     }
 
     public close(): void {
