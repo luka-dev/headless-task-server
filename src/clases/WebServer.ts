@@ -2,29 +2,21 @@ import express, {Express, Request, Response, NextFunction} from "express";
 import helmet from "helmet";
 import cors from "cors";
 import http from "http";
+import {envInt} from "../helpers/EnvHelper";
 
 export interface RouteCallback {
     (request: Request, response: Response, next: NextFunction): void;
 }
 
-
 export default class WebServer {
-
     private authKey: string | null = null;
-
     private readonly port: number | null;
     private app: Express;
 
     private server: http.Server | null = null;
 
     public constructor(port: number = 8080, useCors: boolean = true) {
-        let envPort: number|null = null;
-
-        if (process.env.SERVER_PORT !== undefined && !isNaN(Number(process.env.SERVER_PORT))) {
-            envPort = parseInt(process.env.SERVER_PORT);
-        }
-
-        this.port = envPort ?? port;
+        this.port = envInt('SERVER_PORT') ?? port;
 
         this.app = express();
 

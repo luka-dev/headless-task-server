@@ -40,8 +40,6 @@ describe('Hero single thread', () => {
         const script = async (agent: Hero, resolve: (output?: any) => void, reject: (error?: any) => void) => {
             await agent.goto('https://abrahamjuliot.github.io/creepjs/');
             await agent.waitForPaintingStable();
-            await agent.waitForMillis(3000);
-            await agent.waitForElement(agent.document.querySelector('div.visitor-info'))
             resolve(
                 parseFloat((
                         await agent.document
@@ -65,9 +63,10 @@ describe('Hero single thread', () => {
                 .trim()
             ),
             (task: Task) => {
+                console.log(task.output);
                 expect(task.status).toBe(TaskStatus.DONE);
                 expect(task.output).toBeGreaterThan(50);
                 done();
             });
-    }, 10000);
+    })
 });
