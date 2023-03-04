@@ -176,8 +176,10 @@ export default class TasksPoolHandler {
                             task.status = TaskStatus.INIT_ERROR;
                             task.error = error;
                             reject();
-                            if (error instanceof TimeoutError) {
-                                console.warn('Agent(Hero) init error (proxy)', error);
+
+                            // Ignore proxy errors, they are not fatal
+                            if (error instanceof TimeoutError && error.message.includes('Timeout connecting to')) {
+                                console.warn('Agent(Hero)(proxy) timeout connecting', error);
                             } else {
                                 console.error('Agent(Hero) init error', error);
                                 this.onDisconnected();
