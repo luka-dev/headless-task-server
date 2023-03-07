@@ -1,6 +1,5 @@
 import FormData from "form-data";
 import axios from "axios";
-
 export default class Logger {
     private static rows: string[] = [];
 
@@ -41,6 +40,9 @@ export default class Logger {
         console.error = Logger.refError!;
     }
 
+    public static clear(): void {
+        Logger.rows = [];
+    }
     public static sendLogs(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             if (process.env.TELEGRAM_TOKEN !== undefined && process.env.TELEGRAM_CHAT_ID !== undefined) {

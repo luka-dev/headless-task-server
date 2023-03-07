@@ -10,7 +10,7 @@ import * as OS from "os";
 import {bytesToMegabytes} from "../helpers/OSHelper";
 import {envBool, envInt} from "../helpers/EnvHelper";
 import {IpLookupServices} from "@ulixee/default-browser-emulator/lib/helpers/lookupPublicIp";
-import TimeoutError from "@ulixee/commons/interfaces/TimeoutError"
+import TimeoutError from "@ulixee/commons/interfaces/TimeoutError";
 import Logger from "./Logger";
 
 export default class TasksPoolHandler {
@@ -19,15 +19,18 @@ export default class TasksPoolHandler {
     private readonly queueTimeout: number;
     private readonly upstreamProxyUrl: string|null;
     private readonly blockedResourceTypes: BlockedResourceType[];
+
+    private isRunning: boolean = false;
     private readonly timer?: NodeJS.Timer;
     private readonly connectionToCore: ConnectionToHeroCore;
     private pool: Task[] = [];
     private queue: Task[] = [];
     private counter = {
         done: 0,
-        error: 0,
+        failed: 0,
         session_timeout: 0,
         queue_timeout: 0,
+        init_error: 0,
     };
     public constructor(
         maxConcurrency: number,
@@ -48,152 +51,119 @@ export default class TasksPoolHandler {
             maxConcurrency: this.maxConcurrency * 2,
         });
 
-        this.connectionToCore.on('disconnected', this.onDisconnected)
-        Core.onShutdown = this.onDisconnected;
+        // this.connectionToCore.on('disconnected', this.onDisconnected)
+        // Core.onShutdown = this.onDisconnected;
 
         Core.addConnection(bridge.transportToClient);
 
+        this.isRunning = true;
         this.timer = setInterval(() => this.tick(), 10);
     }
 
-    public process(task: Task, callback: (task:Task) => any): void {
-        const queueTimer = setTimeout(async () => {
-            task.isFulfilled = true;
-            task.timings.end();
-            console.warn('Task Queue Timeout');
-            task.status = TaskStatus.TIMEOUT;
-            this.counter.queue_timeout++;
-            task.error = new Error('Queue Timeout');
-            callback(task);
-        }, this.queueTimeout);
-
-        task.promise = () => {
-            const promise = new Promise<void>(async (resolve, reject) => {
-
-                const context = (function (agent: Hero) {
-                    return new Promise<any>((resolve, reject) => (
-                            new AsyncFunction(
-                                'resolve',
-                                'reject',
-                                'agent',
-                                `try{${task.script};resolve();}catch(e){reject(e);}`
-                            )
-                        )
-                        (resolve, reject, agent)
-                    );
-                });
-
-                new Hero({
-                    blockedResourceTypes: this.blockedResourceTypes,
-                    upstreamProxyUrl: this.upstreamProxyUrl ?? undefined,
-                    upstreamProxyIpMask: {
-                      ipLookupService: IpLookupServices.aws,
-                    },
-                    ...task.options,
-                    showChrome: false,
-                    userProfile: task.profile,
-                    connectionToCore: this.connectionToCore
-                })
-                    .then(
-                        async (agent) => {
-                            clearInterval(queueTimer);
-                            const agentClose = async () => {
-                                if (agent instanceof Hero) {
-                                    try {
-                                        await agent.close();
-                                    } catch (error) {
-                                        console.error('Error closing agent', error);
-                                    }
-                                } else {
-                                    console.warn('Wierd agent', agent);
-                                }
-                            }
-
-                            if (!(agent instanceof Hero)) {
-                                console.error('Agent is not instance of Hero');
-                                task.timings.end();
-                                task.error = 'Agent is not instance of Hero';
-                                await agentClose();
-                                task.status = TaskStatus.INIT_ERROR;
-                                reject();
-                                return;
-                            }
-
-                            if (task.isFulfilled) {
-                                await agentClose();
-                                reject();
-                                return;
-                            }
-
-                            task.timings.begin();
-                            task.status = TaskStatus.RUNNING;
-
-                            setTimeout(async () => {
-                                if (!task.isFulfilled) {
-                                    task.isFulfilled = true;
-                                    task.timings.end();
-                                    console.warn('Task Execution Session Timeout');
-                                    this.counter.session_timeout++;
-                                    task.error = new Error('Execution Session Timeout');
-                                    await agentClose();
-                                    task.status = TaskStatus.TIMEOUT;
-                                    reject();
-                                }
-                            }, this.sessionTimeout);
-
-                            const runtime = context(agent);
-
-                            runtime
-                                .then(async (output: any) => {
-                                    if (!task.isFulfilled) {
-                                        task.isFulfilled = true;
-                                        task.timings.end();
-                                        this.counter.done++;
-                                        task.output = output;
-                                        task.profile = await agent.exportUserProfile();
-                                        await agentClose();
-                                        task.status = TaskStatus.DONE;
-                                        resolve();
-                                    }
-                                })
-                                .catch(async (error: any) => {
-                                    if (!task.isFulfilled) {
-                                        task.isFulfilled = true;
-                                        task.timings.end();
-                                        console.warn('Task Error', error);
-                                        this.counter.error++;
-                                        task.error = error;
-                                        await agentClose();
-                                        task.status = TaskStatus.FAILED;
-                                        reject();
-                                    }
-                                });
-                        },
-                        (error) => {
-                            clearInterval(queueTimer);
-                            task.isFulfilled = true;
-                            task.timings.end();
-                            task.status = TaskStatus.INIT_ERROR;
-                            task.error = error;
-                            reject();
-
-                            // Ignore proxy errors, they are not fatal
-                            if (error instanceof TimeoutError && error.message.includes('Timeout connecting to')) {
-                                console.warn('Agent(Hero)(proxy) timeout connecting', error);
-                            } else {
-                                console.error('Agent(Hero) init error', error);
-                                this.onDisconnected();
-                            }
-                        }
-                    );
-            });
-            promise.finally(() => {callback(task)});
-            return promise;
-        }
+    public push(task: Task): void {
 
         task.status = TaskStatus.QUEUE;
+        task.timer = setTimeout(async () => {
+            const message = 'TaskPool: Queue: Timeout';
+            console.warn(message);
+            task.fulfill(TaskStatus.TIMEOUT, null, message);
+            this.counter.queue_timeout++;
+
+            clearTimeout(task.timer!);
+            task.timer = null;
+        }, this.queueTimeout);
+
         this.queue.push(task);
     }
+
+    private execute(task: Task): void {
+        task.status = TaskStatus.RUNNING;
+
+        // clearTimeout(task.timer!);
+        // task.timer = setInterval(async () => {
+        //     //TODO: Timer for agent creation
+        //     task.fulfill(TaskStatus.INIT_ERROR, null, 'TaskPool: Agent: Too long Hero init');
+        // }, 30000);
+
+        const instance = new Hero({
+            blockedResourceTypes: this.blockedResourceTypes,
+            upstreamProxyUrl: this.upstreamProxyUrl ?? undefined,
+            upstreamProxyIpMask: {
+                ipLookupService: IpLookupServices.aws,
+            },
+            ...task.options,
+            showChrome: false,
+            userProfile: task.profile,
+            connectionToCore: this.connectionToCore
+        });
+
+        instance
+            .then(async (agent) => {
+                clearTimeout(task.timer!);
+                if (task.getIsFulfilled()) {
+                    await agent.close();
+                    return;
+                }
+
+                task.timer = setInterval(async () => {
+                    task.fulfill(TaskStatus.TIMEOUT, null, 'Task: Script: Session Timeout');
+                }, this.sessionTimeout);
+
+                //@ts-ignore we have Omit<Hero, "then">, but to reduce complexity we are using Hero
+                task.promise(agent)
+                    .then(async (output: any) => {
+                        this.counter.done++;
+                    })
+                    .catch(async (error: any) => {
+                        this.counter.failed++;
+                    })
+                    .finally(async () => {
+                        clearInterval(task.timer!);
+                        await agent.close();
+                    });
+            })
+            .catch(async (error) => {
+                clearTimeout(task.timer!);
+
+                //TimeoutError while connecting IpLookupServices for proxy check
+                //Possible error in proxy or target is down
+                if (error instanceof TimeoutError && error.message.includes('Timeout connecting to')) {
+                    task.fulfill(TaskStatus.INIT_ERROR, null, `TaskPool: Agent: Proxy: ${error.name}: ${error.message}`);
+                    await instance.close();
+                }
+                //HttpProxyConnectError: Http Proxy Connect Error connection refused (404)
+                //form "@ulixee/unblocked-agent-mitm-socket" not exported
+                else if (error instanceof Error && error.name == 'HttpProxyConnectError') {
+                    task.fulfill(TaskStatus.INIT_ERROR, null, `TaskPool: Agent: Proxy: ${error.name}: ${error.message}`);
+                    await instance.close();
+                }
+                //handle fatal error, recommend to close all agents and restart app
+                else {
+                    console.error(`TaskPool: Hero Core Init Error:  ${error.name}: ${error.message}`);
+                    task.fulfill(TaskStatus.INIT_ERROR, null, `TaskPool: Agent: ${error.name}: ${error.message}`);
+                    this.close();
+                    await instance.close();
+                    console.warn('TaskPool: Hero Core Shutdown, waiting for pool to finish');
+
+                    new Promise<void>((resolve) => {
+                        setInterval(() => {
+                            if (this.pool.length === 0) {
+                                resolve();
+                            }
+                        }, 10);
+                    })
+                        .finally(() => {
+                            console.warn('TaskPool: Hero Core Shutdown, pool finished');
+                            Logger.sendLogs()
+                                .finally(() => {
+                                    console.warn('TaskPool: Logger: Hero Core Shutdown, logs sent');
+                                    process.exit(1);
+                                });
+                        })
+                }
+            });
+    }
+
     private tick(): void {
         this.pool = this.pool.filter((task) => [TaskStatus.CREATED, TaskStatus.RUNNING, TaskStatus.QUEUE].includes(task.status))
         this.queue = this.queue.filter((task) => TaskStatus.TIMEOUT !== task.status);
@@ -202,45 +172,42 @@ export default class TasksPoolHandler {
             const freeMemory = bytesToMegabytes(OS.freemem());
             //Hard limit to avoid crash
             if (freeMemory < 500 && !envBool('CONCURRENCY_DISABLE_MEM_LIMITER')) {
-                console.warn(`Low memory alert: ${freeMemory}MB, tasks queue: ${this.queue.length}, tasks pool: ${this.pool.length}, new task run prevented to avoid crash.`);
+                console.warn(`TaskPool: Tick: Low on free memory alert ${freeMemory}MB`);
                 return;
             }
 
             const task = this.queue.shift()!;
             this.pool.push(task);
-            task.promise!();
+            this.execute(task);
         }
-    }
-
-    private onDisconnected(): void {
-        this.close();
-        console.error('Hero Core Shutdown');
-        this.queue.forEach((task: Task) => {
-            task.isFulfilled = true;
-            task.timings.end();
-            task.status = TaskStatus.FAILED;
-            task.error = new Error('Hero Core Shutdown');
-            this.counter.error++;
-        });
-        Logger.sendLogs()
-            .finally(() => {
-                process.exit(1);
-            });
     }
 
     public close(): void {
         clearInterval(this.timer);
+        this.isRunning = false;
+
+        console.warn('TaskPool: Queue: Stopped');
+        console.warn('TaskPool: Queue: Clearing queue');
+
+        this.queue.forEach((task: Task) => {
+            task.fulfill(TaskStatus.INIT_ERROR, null, 'TaskPool: Queue: Hero Core Shutdown');
+        });
+
     }
-    public getPoolLength(): number {
+    public poolLength(): number {
         return this.pool.length;
     }
-    public getQueueLength(): number {
+    public queueLength(): number {
         return this.queue.length;
     }
     public getCounter() {
         return this.counter;
     }
     public getCounterTotal(): number {
-        return this.counter.done + this.counter.error + this.counter.session_timeout + this.counter.queue_timeout;
+        return this.counter.done + this.counter.failed + this.counter.session_timeout + this.counter.queue_timeout + this.counter.init_error;
+    }
+
+    public getIsRunning(): boolean {
+        return this.isRunning;
     }
 }

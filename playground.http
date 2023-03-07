@@ -1,0 +1,9 @@
+POST http://127.0.0.1:8080/task
+Content-Type: application/json
+
+{
+  "options": {
+
+  },
+  "script": "await agent.goto('https://example.com/'); resolve(await agent.document.title);"
+}

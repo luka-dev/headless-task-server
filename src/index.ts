@@ -12,8 +12,9 @@ import {bytesToMegabytes} from "./helpers/OSHelper";
 import Logger from "./clases/Logger";
 
 Logger.hook();
-process.on('warning', e => console.warn(e.stack));
-process.on('uncaughtException', e => console.warn(e.stack))
+
+// process.on('warning', e => console.warn(e.stack));
+// process.on('uncaughtException', e => console.warn(e.stack))
 
 const config: IWebServerConfig & ITasksPoolHandler = JSON.parse(readFileSync(__dirname + '/../config.json', 'utf8'));
 
@@ -54,8 +55,8 @@ webServer.start()
                         queue: envInt('QUEUE_TIMEOUT') ?? config.DEFAULT_QUEUE_TIMEOUT,
                     },
                     concurrency: envInt('MAX_CONCURRENCY') ?? config.DEFAULT_MAX_CONCURRENCY,
-                    pool: tasksHandler.getPoolLength(),
-                    queue: tasksHandler.getQueueLength(),
+                    pool: tasksHandler.poolLength(),
+                    queue: tasksHandler.queueLength(),
                     counter: {
                         total: tasksHandler.getCounterTotal(),
                         ...tasksHandler.getCounter()
@@ -79,41 +80,62 @@ webServer.start()
             response.json(Logger.getRows());
         })
 
+        webServer.get('/restart', (request, response) => {
+                tasksHandler.close();
+
+                new Promise<void>((resolve) => {
+                    setInterval(() => {
+                        if (tasksHandler.poolLength() === 0) {
+                            resolve();
+                        }
+                    }, 10);
+                })
+                    .finally(() => {
+                        console.warn('TaskPool: Hero Core Shutdown, pool finished');
+                        Logger.sendLogs()
+                            .finally(() => {
+                                console.warn('TaskPool: Logger: Hero Core Shutdown, logs sent');
+                                response.json({
+                                    time: ISODate.now()
+                                });
+                                process.exit(1);
+                            });
+                    })
+            }
+        )
+
         webServer.post(`/task`, async (request, response) => {
             if (typeof request.body.script === 'string'
                 && (typeof request.body.options === 'undefined' || typeof request.body.options === 'object')
                 && (typeof request.body.profile === 'undefined' || typeof request.body.profile === 'object')
             ) {
-                tasksHandler.process(new Task(
+                const callback = (task: Task) => {
+                    response
+                        .status(task.status === TaskStatus.DONE ? 200 : 500)
+                        .json({
+                            status: task.status,
+                            timings: task.timings,
+                            options: task.options ?? {},
+                            profile: task.profile ?? {},
+                            output: task.output ?? null,
+                            error: task.error?.toString() ?? null
+                        });
+                };
+
+                const task = new Task(
                     request.body.script,
                     request.body.options ?? {},
-                    request.body.profile ?? {}
-                ), (task) => {
-                    if (task.status === TaskStatus.DONE) {
-                        response
-                            .status(200)
-                            .json({
-                                status: task.status,
-                                timings: task.timings,
-                                options: task.options,
-                                profile: task.profile,
-                                output: task.output,
-                                error: task.error?.toString() ?? null
-                            });
-                    }
-                    else {
-                        response
-                            .status(500)
-                            .json({
-                                status: task.status,
-                                timings: task.timings,
-                                options: task.options,
-                                profile: task.profile,
-                                output: task.output,
-                                error: task.error?.toString() ?? null
-                            });
-                    }
-                });
+                    request.body.profile ?? {},
+                    callback
+                );
+
+                if (tasksHandler.getIsRunning()) {
+                    tasksHandler.push(task);
+                }
+                else {
+                    task.fulfill(TaskStatus.INIT_ERROR, null, 'TaskPool: Queue: Hero Core Shutdown');
+                }
+
             } else {
                 response
                     .status(500)
