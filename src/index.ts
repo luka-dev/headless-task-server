@@ -82,25 +82,8 @@ webServer.start()
 
         webServer.get('/restart', (request, response) => {
                 tasksHandler.close();
-
-                new Promise<void>((resolve) => {
-                    setInterval(() => {
-                        if (tasksHandler.poolLength() === 0) {
-                            resolve();
-                        }
-                    }, 10);
-                })
-                    .finally(() => {
-                        console.warn('TaskPool: Hero Core Shutdown, pool finished');
-                        Logger.sendLogs()
-                            .finally(() => {
-                                console.warn('TaskPool: Logger: Hero Core Shutdown, logs sent');
-                                response.json({
-                                    time: ISODate.now()
-                                });
-                                process.exit(1);
-                            });
-                    })
+                response.json('restarting...');
+                tasksHandler.onDisconnected();
             }
         )
 

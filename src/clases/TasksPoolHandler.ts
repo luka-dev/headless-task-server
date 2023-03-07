@@ -51,8 +51,8 @@ export default class TasksPoolHandler {
             maxConcurrency: this.maxConcurrency * 2,
         });
 
-        // this.connectionToCore.on('disconnected', this.onDisconnected)
-        // Core.onShutdown = this.onDisconnected;
+        this.connectionToCore.on('disconnected', this.onDisconnected)
+        Core.onShutdown = this.onDisconnected;
 
         Core.addConnection(bridge.transportToClient);
 
@@ -144,22 +144,7 @@ export default class TasksPoolHandler {
                     this.close();
                     await instance.close();
                     console.warn('TaskPool: Hero Core Shutdown, waiting for pool to finish');
-
-                    new Promise<void>((resolve) => {
-                        setInterval(() => {
-                            if (this.pool.length === 0) {
-                                resolve();
-                            }
-                        }, 10);
-                    })
-                        .finally(() => {
-                            console.warn('TaskPool: Hero Core Shutdown, pool finished');
-                            Logger.sendLogs()
-                                .finally(() => {
-                                    console.warn('TaskPool: Logger: Hero Core Shutdown, logs sent');
-                                    process.exit(1);
-                                });
-                        })
+                    this.onDisconnected()
                 }
             });
     }
@@ -194,6 +179,25 @@ export default class TasksPoolHandler {
         });
 
     }
+
+    public onDisconnected() {
+        new Promise<void>((resolve) => {
+            setInterval(() => {
+                if (this.pool.length === 0) {
+                    resolve();
+                }
+            }, 10);
+        })
+            .finally(() => {
+                console.warn('TaskPool: Hero Core Shutdown, pool finished');
+                Logger.sendLogs()
+                    .finally(() => {
+                        console.warn('TaskPool: Logger: Hero Core Shutdown, logs sent');
+                        process.exit(1);
+                    });
+            })
+    }
+
     public poolLength(): number {
         return this.pool.length;
     }
