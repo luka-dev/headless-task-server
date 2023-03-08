@@ -1,9 +1,41 @@
+### Example Domain test
 POST http://127.0.0.1:8080/task
 Content-Type: application/json
 
 {
-  "options": {
-
-  },
   "script": "await agent.goto('https://example.com/'); resolve(await agent.document.title);"
 }
+
+> {%
+client.test("Check title", function() {
+  client.assert(response.body.output === "Example Domain", "ERROR! Title isn't correct");
+});
+%}
+
+### Error Waiting for not-existed-element test
+POST http://127.0.0.1:8080/task
+Content-Type: application/json
+
+{
+  "script": "await agent.goto('https://example.com/'); await agent.waitForElement('#no-existed-element'); resolve(await agent.document.title);"
+}
+
+> {%
+client.test("Check Error", function () {
+   client.assert(response.body.error === "TimeoutError: Timeout waiting for element to exist", "ERROR! TimeoutError has different message");
+});
+%}
+
+### CreepJS test
+POST http://127.0.0.1:8080/task
+Content-Type: application/json
+
+{
+  "script": "await agent.goto('https://abrahamjuliot.github.io/creepjs/'); await agent.waitForPaintingStable(); const { document } = agent.activeTab; const element = document.querySelector('#fingerprint-data > div.visitor-info > div > div:nth-child(2) > div:nth-child(2) > span'); await agent.waitForElement(element, {waitForVisible: true}); resolve(parseFloat((await element.textContent)?.replace('%', '').trim() ?? '0'));"
+}
+
+> {%
+client.test("Check Error", function () {
+   client.assert(response.body.output >= 50, "WARNING! CreepJS trust score missing or less than 50%");
+});
+%}

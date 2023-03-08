@@ -109,7 +109,7 @@ export default class TasksPoolHandler {
                     task.fulfill(TaskStatus.TIMEOUT, null, 'Task: Script: Session Timeout');
                 }, this.sessionTimeout);
 
-                //@ts-ignore we have Omit<Hero, "then">, but to reduce complexity we are using Hero
+                //@ts-ignore we have Omit<Hero, "then">, but to reduce complexity we represent as Hero
                 task.promise(agent)
                     .then(async (output: any) => {
                         this.counter.done++;

@@ -44,8 +44,8 @@ export default class Task {
             const promise = new Promise<any>((resolve, reject) => {
                     fulfilledCheckInterval = setInterval(() => {
                         if (this.isFulfilled) {
-                            const message = 'Task: Execution: fulfilled before execution ended, aborting.';
-                            console.log(message);
+                            const message = 'Execution: fulfilled before execution ended, aborting.';
+                            console.log('Task: ' + message);
                             reject(message);
                         }
                     }, 10);
