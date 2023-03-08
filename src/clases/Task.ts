@@ -26,9 +26,23 @@ export default class Task {
         this.callback = callback;
 
         this.promise = (agent: Hero) => {
-            let filfilledCheckInterval: NodeJS.Timeout|null = null;
+            let fulfilledCheckInterval: NodeJS.Timeout|null = null;
+
+            const exportProfile = async (): Promise<IUserProfile> => {
+                try {
+                    return await agent.exportUserProfile();
+                } catch (error) {
+                    if (error instanceof Error) {
+                        console.warn('Task: Script: exportUserProfile: ' + error.name + ': ' + error.message);
+                    } else {
+                        console.warn('Task: Script: exportUserProfile: ' + error)
+                    }
+                }
+                return this.profile;
+            }
+
             const promise = new Promise<any>((resolve, reject) => {
-                    filfilledCheckInterval = setInterval(() => {
+                    fulfilledCheckInterval = setInterval(() => {
                         if (this.isFulfilled) {
                             const message = 'Task: Execution: fulfilled before execution ended, aborting.';
                             console.log(message);
@@ -46,18 +60,18 @@ export default class Task {
 
             promise
                 .finally(() => {
-                    clearInterval(filfilledCheckInterval!);
+                    clearInterval(fulfilledCheckInterval!);
                 })
-                .then((output) => {
-                    this.fulfill(TaskStatus.DONE, output);
+                .then(async (output) => {
+                    this.fulfill(TaskStatus.DONE, output, null, await exportProfile());
                 })
-                .catch((error) => {
+                .catch(async (error) => {
                     if (error instanceof Error) {
                         console.warn('Task: Script: ' + error.name + ': ' + error.message);
                     } else {
                         console.warn('Task: Script: ' + error);
                     }
-                    this.fulfill(TaskStatus.FAILED, null, error);
+                    this.fulfill(TaskStatus.FAILED, null, error, await exportProfile());
                 });
 
             return promise;
