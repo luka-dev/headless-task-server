@@ -10,6 +10,7 @@ import Task from "./clases/Task";
 import {envInt} from "./helpers/EnvHelper";
 import {bytesToMegabytes} from "./helpers/OSHelper";
 import Logger from "./clases/Logger";
+import {findEvalDetailsFromError} from "./helpers/ErrorHelper";
 
 Logger.hook();
 
@@ -101,7 +102,11 @@ webServer.start()
                             options: task.options ?? {},
                             profile: task.profile ?? {},
                             output: task.output ?? null,
-                            error: task.error?.toString() ?? null
+                            error: ((task.error instanceof Error)
+                                    ?
+                                    task.error.name + ': ' + task.error.message + '\n' + findEvalDetailsFromError(task.error)
+                                    : null
+                            ) ?? task.error?.toString()
                         });
                 };
 
@@ -137,4 +142,6 @@ webServer.start()
         console.error('Process stopped, port is busy.');
         process.exit(1);
     })
+
+
 

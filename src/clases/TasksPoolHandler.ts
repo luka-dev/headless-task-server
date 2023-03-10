@@ -106,6 +106,7 @@ export default class TasksPoolHandler {
                 }
 
                 task.timer = setInterval(async () => {
+                    this.counter.session_timeout++;
                     task.fulfill(TaskStatus.TIMEOUT, null, 'Task: Script: Session Timeout');
                 }, this.sessionTimeout);
 
@@ -115,7 +116,8 @@ export default class TasksPoolHandler {
                         this.counter.done++;
                     })
                     .catch(async (error: any) => {
-                        this.counter.failed++;
+                        if (!task.getIsFulfilled())
+                            this.counter.failed++;
                     })
                     .finally(async () => {
                         clearInterval(task.timer!);
@@ -183,6 +185,7 @@ export default class TasksPoolHandler {
     public onDisconnected() {
         new Promise<void>((resolve) => {
             setInterval(() => {
+                this.pool = this.pool.filter((task) => [TaskStatus.CREATED, TaskStatus.RUNNING, TaskStatus.QUEUE].includes(task.status))
                 if (this.pool.length === 0) {
                     resolve();
                 }
@@ -214,4 +217,5 @@ export default class TasksPoolHandler {
     public getIsRunning(): boolean {
         return this.isRunning;
     }
+
 }

@@ -11,6 +11,7 @@
     "stamp": "run-script-os",
     "stamp:nix": "date -u +%Y-%m-%dT%H:%M:%S > ./dist/buildtimestamp",
     "stamp:win32": "windwos_generate_stamp.bat > ./dist/buildtimestamp",
+    "pre-test": "node ./tests/prepare.js",
     "build": "tsc && npm run stamp",
     "start": "node ./dist/index.js"
   },

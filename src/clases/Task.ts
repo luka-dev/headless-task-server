@@ -4,6 +4,7 @@ import ITaskOptions from "../types/ITaskOptions";
 import IUserProfile from "@ulixee/hero-interfaces/IUserProfile";
 import Hero from "@ulixee/hero";
 import AsyncFunction from "../helpers/AsyncFuncion";
+import {findEvalDetailsFromError} from "../helpers/ErrorHelper";
 
 export default class Task {
     private readonly script: string;
@@ -67,7 +68,7 @@ export default class Task {
                 })
                 .catch(async (error) => {
                     if (error instanceof Error) {
-                        console.warn('Task: Script: ' + error.name + ': ' + error.message);
+                        console.warn('Task: Script: ' + error.name + ': ' + error.message + '\n' + findEvalDetailsFromError(error));
                     } else {
                         console.warn('Task: Script: ' + error);
                     }

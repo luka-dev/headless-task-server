@@ -17,12 +17,26 @@ POST http://127.0.0.1:8080/task
 Content-Type: application/json
 
 {
-  "script": "await agent.goto('https://example.com/'); await agent.waitForElement('#no-existed-element'); resolve(await agent.document.title);"
+  "script": "await agent.goto('https://example.com/'); await agent.waitForElement('#no-existed-element', {timeoutMs: 10000}); resolve(await agent.document.title);"
 }
 
 > {%
 client.test("Check Error", function () {
-   client.assert(response.body.error === "TimeoutError: Timeout waiting for element to exist", "ERROR! TimeoutError has different message");
+   client.assert(response.body.error.includes('Timeout waiting for element to exist'), "ERROR! TimeoutError has different message");
+});
+%}
+
+### Test SyntaxError
+POST http://127.0.0.1:8080/task
+Content-Type: application/json
+
+{
+    "script": "this SCRIPT IS BAD///////////;;;; NOT WORKING"
+}
+
+> {%
+client.test("SyntaxError", function () {
+   client.assert(response.body.error.includes('SyntaxError'), "ERROR! SyntaxError has different message");
 });
 %}
 
@@ -35,7 +49,7 @@ Content-Type: application/json
 }
 
 > {%
-client.test("Check Error", function () {
-   client.assert(response.body.output >= 50, "WARNING! CreepJS trust score missing or less than 50%");
-});
+    client.test("Check Error", function () {
+        client.assert(response.body.output >= 50, "WARNING! CreepJS trust score missing or less than 50%");
+    });
 %}
