@@ -139,6 +139,11 @@ export default class TasksPoolHandler {
                     task.fulfill(TaskStatus.INIT_ERROR, null, `TaskPool: Agent: Proxy: ${error.name}: ${error.message}`);
                     await instance.close();
                 }
+                //Socks5ProxyConnectError, same as HttpProxyConnectError above
+                else if (error instanceof Error && error.name == 'Socks5ProxyConnectError') {
+                    task.fulfill(TaskStatus.INIT_ERROR, null, `TaskPool: Agent: Proxy: ${error.name}: ${error.message}`);
+                    await instance.close();
+                }
                 //handle fatal error, recommend to close all agents and restart app
                 else {
                     console.error(`TaskPool: Hero Core Init Error:  ${error.name}: ${error.message}`);
