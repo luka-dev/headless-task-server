@@ -68,7 +68,7 @@ export default class Task {
                 })
                 .catch(async (error) => {
                     if (error instanceof Error) {
-                        console.warn('Task: Script: ' + error.name + ': ' + error.message + '\n' + findEvalDetailsFromError(error));
+                        console.warn(('Task: Script: ' + error.name + ': ' + error.message + '\n' + findEvalDetailsFromError(error)).trim());
                     } else {
                         console.warn('Task: Script: ' + error);
                     }
