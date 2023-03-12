@@ -102,11 +102,9 @@ webServer.start()
                             options: task.options ?? {},
                             profile: task.profile ?? {},
                             output: task.output ?? null,
-                            error: ((task.error instanceof Error)
-                                    ?
-                                    task.error.name + ': ' + task.error.message + '\n' + findEvalDetailsFromError(task.error)
-                                    : null
-                            ) ?? task.error?.toString()
+                            error: ((task.error instanceof Error) ? task.error.name + ': ' + task.error.message + '\n' + findEvalDetailsFromError(task.error) : null)
+                                ?? task.error?.toString()
+                                ?? null
                         });
                 };
 
