@@ -10,7 +10,7 @@ fs.readdir(__dirname, function (err, files) {
     files.forEach(function (file) {
         // Do whatever you want to do with the file
         if (file.indexOf('.js') === file.length - 3) {
-            if (file === 'prepare.js') return;
+            if (file === 'pretest.js') return;
 
             const name = file.slice(0, -3);
             try {

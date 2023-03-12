@@ -1,6 +1,7 @@
-### Example Domain test
-POST http://127.0.0.1:8080/task
+### Example Domain
+POST {{host}}/task
 Content-Type: application/json
+Authorization: {{auth_key}}
 
 {
   "script": "await agent.goto('https://example.com/'); resolve(await agent.document.title);"
@@ -12,9 +13,10 @@ client.test("Check title", function() {
 });
 %}
 
-### Error Waiting for not-existed-element test
-POST http://127.0.0.1:8080/task
+### Test Error Handling Waiting for not-existed-element
+POST {{host}}/task
 Content-Type: application/json
+Authorization: {{auth_key}}
 
 {
   "script": "await agent.goto('https://example.com/'); await agent.waitForElement('#no-existed-element', {timeoutMs: 10000}); resolve(await agent.document.title);"
@@ -26,9 +28,10 @@ client.test("Check Error", function () {
 });
 %}
 
-### Test SyntaxError
-POST http://127.0.0.1:8080/task
+### Test Error Handling for SyntaxError
+POST {{host}}/task
 Content-Type: application/json
+Authorization: {{auth_key}}
 
 {
     "script": "this SCRIPT IS BAD///////////;;;; NOT WORKING"
@@ -40,9 +43,10 @@ client.test("SyntaxError", function () {
 });
 %}
 
-### CreepJS test
-POST http://127.0.0.1:8080/task
+### CreepJS Score
+POST {{host}}/task
 Content-Type: application/json
+Authorization: {{auth_key}}
 
 {
   "script": "await agent.goto('https://abrahamjuliot.github.io/creepjs/'); await agent.waitForPaintingStable(); const { document } = agent.activeTab; const element = document.querySelector('#fingerprint-data > div.visitor-info > div > div:nth-child(2) > div:nth-child(2) > span'); await agent.waitForElement(element, {waitForVisible: true}); resolve(parseFloat((await element.textContent)?.replace('%', '').trim() ?? '0'));"
@@ -53,3 +57,11 @@ Content-Type: application/json
         client.assert(response.body.output >= 50, "WARNING! CreepJS trust score missing or less than 50%");
     });
 %}
+
+
+### Check handler for UnhandledRejection
+POST {{host}}/task
+Content-Type: application/json
+Authorization: {{auth_key}}
+
+< ./tests/UnhandledRejection.json
