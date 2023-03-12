@@ -4,7 +4,7 @@ A headless browser task server based on [Hero](https://github.com/ulixee/hero).
 
 - Hero is a web browser that's built for scraping.
 - This task server allow you to process multiple task simultaneously on single server instance
-- Has [Helper](https://github.com/luka-dev/headless-task-server-php#helpers) for PHP to make request easy (Outdated) 
+- Has [Helper](https://github.com/luka-dev/headless-task-server-php#helpers) for PHP to make request easy (!!!!!!Outdated!!!!!!, update soon)
 
 # Install
 
@@ -43,6 +43,25 @@ npm run build
 
 - #### Enjoy
 
+### Additional ENVs:
+- `AUTH_KEY` - Auth key for requests, default `null`
+- `SERVER_PORT` - Server port, default `8080`
+- `UPSTREAM_PROXY_URL` - Default proxy for script, default `null`, also can be set personally for each task in options `upstreamProxyUrl`
+- `SESSION_TIMEOUT` - Timeout task script execution, default `60000` (1 min)
+- `QUEUE_TIMEOUT` - Timeout og waiting to begin task processing, default `30000` (30 sec)
+- `MAX_CONCURRENCY` - Limit of concurrent tasks, default `5`
+> NOTE: If you want to calculate custom value, you can use this formula `MAX_CONCURRENCY = (FREE_RAM - 1.5GB) / 0.5GB`, also to prevent stuttering avg formula for CPU is `MAX_CONCURRENCY = CPU_CORES_COUNT * 2`
+- `CONCURRENCY_DISABLE_MEM_LIMITER` - Memory limiter for concurrency, can be disabled with `true`.
+> NOTE: If free memory less than 500MB, new task wouldn't be runned until memory will be free.\
+> For example, when chrome instance will be closed after finishing tasks, memory will be free.\
+> Due to chrome/chromium specific behavior, memory can't be freed immediately, so we need to wait for it.
+- `TELEGRAM_TOKEN` & `TELEGRAM_CHAT_ID` - Telegram bot token and chat id for sending logs on crash or restart, default `null`
+- `DEBUG` & `ULX_DEBUG` - Enable debug mode, default `false`
+- `SHOW_CHROME` - Show browser window, default `false`. Works only on systems with GUI
+> NOTE: On non GUI systems will crash! If you want to see browser window, you need to set `SHOW_CHROME` to `true` and run server directly on machine, not in Docker.
+
+
+
 # Usage
 
 > Example IP `127.0.0.1`.
@@ -50,17 +69,6 @@ npm run build
 > Auth work via header `Authorization`.
 >
 > Auth key loading from `config.json` and overwriting with env `AUTH_KEY`
-> 
-> Additional ENVs:
-> > `SESSION_TIMEOUT` - Timeout for request session, default `60000` (1 min)
-> >
-> > `MAX_CONCURRENCY` - Limit of concurrent tasks, default `5`
-> > > NOTE: If you want to calculate custom value, you can use this formula `MAX_CONCURRENCY = (FREE_RAM - 1.5GB) / 0.5GB`, also to prevent stuttering avg formula for CPU is `MAX_CONCURRENCY = CPU_CORES_COUNT * 2`
-> >
-> > `CONCURRENCY_DISABLE_MEM_LIMITER` - Memory limiter for concurrency, can be disabled with `true`.
-> > > NOTE: If free memory less than 500MB, new task wouldn't be runned until memory will be free.\
-> > > For example, when chrome instance will be closed after finishing tasks, memory will be free.\
-> > > Due to chrome/chromium specific behavior, memory can't be freed immediately, so we need to wait for it.
 
 - Health Check
 
