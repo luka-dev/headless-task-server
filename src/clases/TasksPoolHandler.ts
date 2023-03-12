@@ -1,4 +1,3 @@
-import AsyncFunction from "../helpers/AsyncFuncion";
 import {TaskStatus} from "../enums/TaskStatus";
 
 import Hero, {BlockedResourceType, ConnectionToHeroCore} from '@ulixee/hero';
