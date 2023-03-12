@@ -51,8 +51,8 @@ export default class TasksPoolHandler {
             maxConcurrency: this.maxConcurrency * 2,
         });
 
-        this.connectionToCore.on('disconnected', this.onDisconnected)
-        Core.onShutdown = this.onDisconnected;
+        this.connectionToCore.on('disconnected', () => this.onDisconnected())
+        Core.onShutdown = () => this.onDisconnected();
 
         Core.addConnection(bridge.transportToClient);
 
