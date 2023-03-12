@@ -51,6 +51,7 @@ export default class Task {
                         }
                     }, 10);
 
+                    //TODO: suppress console.log in user scripts
                     return new AsyncFunction(
                         'resolve', 'reject', 'agent',
                         `try { ${this.script}; resolve(); } catch(e) { reject(e); }`
