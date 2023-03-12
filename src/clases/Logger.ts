@@ -1,5 +1,6 @@
 import FormData from "form-data";
 import axios from "axios";
+import {envString} from "../helpers/EnvHelper";
 export default class Logger {
     private static rows: string[] = [];
 
@@ -45,14 +46,14 @@ export default class Logger {
     }
     public static sendLogs(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            if (process.env.TELEGRAM_TOKEN !== undefined && process.env.TELEGRAM_CHAT_ID !== undefined) {
+            if (envString('TELEGRAM_TOKEN') && envString('TELEGRAM_CHAT_ID')) {
                 const form = new FormData();
-                form.append('chat_id', process.env.TELEGRAM_CHAT_ID);
+                form.append('chat_id', envString('TELEGRAM_CHAT_ID'));
                 form.append('caption', '#HERO CRASHED');
                 form.append('document', Buffer.from(Logger.rows.join('\n'), 'utf-8'), {filename: 'crash.log'});
 
                 axios.post(
-                    `https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}/sendDocument`,
+                    `https://api.telegram.org/bot${envString('TELEGRAM_TOKEN')}/sendDocument`,
                     form,
                     {
                         headers: {

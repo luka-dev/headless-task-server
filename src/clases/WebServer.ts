@@ -2,7 +2,7 @@ import express, {Express, Request, Response, NextFunction} from "express";
 import helmet from "helmet";
 import cors from "cors";
 import http from "http";
-import {envInt} from "../helpers/EnvHelper";
+import {envInt, envString} from "../helpers/EnvHelper";
 
 export interface RouteCallback {
     (request: Request, response: Response, next: NextFunction): void;
@@ -30,7 +30,7 @@ export default class WebServer {
     }
 
     public setAuthKey(key: string | null = null): void {
-        this.authKey = process.env.AUTH_KEY ?? key;
+        this.authKey = envString('AUTH_KEY') ?? key;
     }
 
     public checkAuth(request: Request): boolean {

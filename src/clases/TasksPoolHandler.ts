@@ -8,7 +8,7 @@ import {TransportBridge} from '@ulixee/net';
 import Task from "./Task";
 import * as OS from "os";
 import {bytesToMegabytes} from "../helpers/OSHelper";
-import {envBool, envInt} from "../helpers/EnvHelper";
+import {envBool, envInt, envString} from "../helpers/EnvHelper";
 import {IpLookupServices} from "@ulixee/default-browser-emulator/lib/helpers/lookupPublicIp";
 import TimeoutError from "@ulixee/commons/interfaces/TimeoutError";
 import Logger from "./Logger";
@@ -42,7 +42,7 @@ export default class TasksPoolHandler {
         this.maxConcurrency = envInt('MAX_CONCURRENCY') ?? maxConcurrency;
         this.sessionTimeout = envInt('SESSION_TIMEOUT') ?? sessionTimeout;
         this.queueTimeout = envInt('QUEUE_TIMEOUT') ?? queueTimeout;
-        this.upstreamProxyUrl = process.env.upstreamProxyUrl ?? upstreamProxyUrl;
+        this.upstreamProxyUrl = envString('UPSTREAM_PROXY_URL') ?? upstreamProxyUrl;
         this.blockedResourceTypes = blockedResourceTypes;
 
         const bridge = new TransportBridge();
@@ -92,7 +92,7 @@ export default class TasksPoolHandler {
                 ipLookupService: IpLookupServices.aws,
             },
             ...task.options,
-            showChrome: false,
+            showChrome: envBool('SHOW_CHROME'),
             userProfile: task.profile,
             connectionToCore: this.connectionToCore
         });
