@@ -64,7 +64,7 @@ export default class TasksPoolHandler {
 
         task.status = TaskStatus.QUEUE;
         task.timer = setTimeout(async () => {
-            const message = 'TaskPool: Queue: Timeout';
+            const message = `TaskPool: Queue: Timeout, pool: ${this.pool.length}, queue: ${this.queue.length}`;
             console.warn(message);
             task.fulfill(TaskStatus.TIMEOUT, null, message);
             this.counter.queue_timeout++;
