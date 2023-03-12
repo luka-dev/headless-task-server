@@ -64,7 +64,7 @@ webServer.start()
                     }
                 },
                 server: {
-                    uptime: OS.uptime(),
+                    uptime: Math.round(OS.uptime()),
                     platform: OS.platform(),
                     arch: OS.arch(),
                     cores: OS.cpus().length,
