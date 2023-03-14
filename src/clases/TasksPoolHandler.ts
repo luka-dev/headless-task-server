@@ -63,7 +63,8 @@ export default class TasksPoolHandler {
 
         task.status = TaskStatus.QUEUE;
         task.timer = setTimeout(async () => {
-            const message = `TaskPool: Queue: Timeout, pool: ${this.pool.length}, queue: ${this.queue.length}`;
+            const isInPool = this.pool.includes(task);
+            const message = `TaskPool: ${isInPool ? 'Init' : 'Queue'} Timeout, pool: ${this.pool.length}, queue: ${this.queue.length}`;
             console.warn(message);
             task.fulfill(TaskStatus.TIMEOUT, null, message);
             this.counter.queue_timeout++;
@@ -111,10 +112,10 @@ export default class TasksPoolHandler {
 
                 //@ts-ignore we have Omit<Hero, "then">, but to reduce complexity we represent as Hero
                 task.promise(agent)
-                    .then(async (output: any) => {
+                    .then(async () => {
                         this.counter.done++;
                     })
-                    .catch(async (error: any) => {
+                    .catch(async () => {
                         if (!task.getIsFulfilled())
                             this.counter.failed++;
                     })
