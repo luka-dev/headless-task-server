@@ -27,7 +27,7 @@ export default class Task {
         this.callback = callback;
 
         this.promise = (agent: Hero) => {
-            let fulfilledCheckInterval: NodeJS.Timeout|null = null;
+            let fulfilledCheckInterval: NodeJS.Timer|null = null;
 
             const exportProfile = async (): Promise<IUserProfile> => {
                 try {

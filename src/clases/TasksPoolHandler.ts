@@ -18,7 +18,6 @@ export default class TasksPoolHandler {
     private readonly queueTimeout: number;
     private readonly upstreamProxyUrl: string|null;
     private readonly blockedResourceTypes: BlockedResourceType[];
-
     private isRunning: boolean = false;
     private readonly timer?: NodeJS.Timer;
     private readonly connectionToCore: ConnectionToHeroCore;
@@ -47,9 +46,8 @@ export default class TasksPoolHandler {
         const bridge = new TransportBridge();
         this.connectionToCore = new ConnectionToHeroCore(bridge.transportToCore, {
             instanceTimeoutMillis: this.sessionTimeout,
-            maxConcurrency: this.maxConcurrency * 2,
+            maxConcurrency: this.maxConcurrency * 4
         });
-
         this.connectionToCore.on('disconnected', () => this.onDisconnected())
         Core.onShutdown = () => this.onDisconnected();
 
@@ -60,7 +58,6 @@ export default class TasksPoolHandler {
     }
 
     public push(task: Task): void {
-
         task.status = TaskStatus.QUEUE;
         task.timer = setTimeout(async () => {
             const isInPool = this.pool.includes(task);
@@ -70,7 +67,6 @@ export default class TasksPoolHandler {
             this.counter.queue_timeout++;
 
             clearTimeout(task.timer!);
-            task.timer = null;
         }, this.queueTimeout);
 
         this.queue.push(task);
@@ -105,7 +101,7 @@ export default class TasksPoolHandler {
                     return;
                 }
 
-                task.timer = setInterval(async () => {
+                task.timer = setTimeout(async () => {
                     this.counter.session_timeout++;
                     task.fulfill(TaskStatus.TIMEOUT, null, 'Task: Script: Session Timeout');
                 }, this.sessionTimeout);
@@ -120,7 +116,7 @@ export default class TasksPoolHandler {
                             this.counter.failed++;
                     })
                     .finally(async () => {
-                        clearInterval(task.timer!);
+                        clearTimeout(task.timer!);
                         await agent.close();
                     });
             })
