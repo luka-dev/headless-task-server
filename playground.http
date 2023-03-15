@@ -65,3 +65,10 @@ Content-Type: application/json
 Authorization: {{auth_key}}
 
 < ./tests/UnhandledRejection.json
+
+### Check Fetch plugin
+POST {{host}}/task
+Content-Type: application/json
+Authorization: {{auth_key}}
+
+< ./tests/FetchTest.json
