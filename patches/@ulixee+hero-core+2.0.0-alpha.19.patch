@@ -1,0 +1,23 @@
+diff --git a/node_modules/@ulixee/hero-core/injected-scripts/Fetcher.js b/node_modules/@ulixee/hero-core/injected-scripts/Fetcher.js
+index 9f20d00..b6cf48a 100644
+--- a/node_modules/@ulixee/hero-core/injected-scripts/Fetcher.js
++++ b/node_modules/@ulixee/hero-core/injected-scripts/Fetcher.js
+@@ -18,7 +18,18 @@ class Fetcher {
+         if (typeof input === 'number') {
+             requestOrUrl = NodeTracker.getWatchedNodeWithId(input);
+         }
++        let timer = null;
++        if (typeof init === 'object' && init.hasOwnProperty('timeout') && typeof init.timeout === 'number' && init.timeout > 0) {
++            const controller = new AbortController();
++            timer = setTimeout(() => controller.abort(), init.timeout);
++            init = {
++                ...init,
++                timeout: undefined,
++                signal: controller.signal,
++            };
++        }
+         const response = await fetch(requestOrUrl, init);
++        clearTimeout(timer);
+         const nodeId = NodeTracker.watchNode(response);
+         return {
+             id: nodeId,

@@ -11,6 +11,7 @@
     "stamp": "run-script-os",
     "stamp:nix": "date -u +%Y-%m-%dT%H:%M:%S > ./dist/buildtimestamp",
     "stamp:win32": "windwos_generate_stamp.bat > ./dist/buildtimestamp",
+    "postinstall": "patch-package",
     "pretest": "node ./tests/pretest.js",
     "build": "tsc && npm run stamp",
     "start": "node ./dist/index.js"
@@ -65,6 +66,7 @@
     "fs": "^0.0.2",
     "helmet": "^5.0.2",
     "os": "^0.1.2",
+    "patch-package": "^6.5.1",
     "run-script-os": "^1.1.6"
   }
 }
