@@ -53,8 +53,9 @@ webServer.start()
                 },
                 task: {
                     timeout: {
-                        session: envInt('SESSION_TIMEOUT') ?? config.DEFAULT_SESSION_TIMEOUT,
                         queue: envInt('QUEUE_TIMEOUT') ?? config.DEFAULT_QUEUE_TIMEOUT,
+                        init: envInt('INIT_TIMEOUT') ?? config.DEFAULT_INIT_TIMEOUT,
+                        session: envInt('SESSION_TIMEOUT') ?? config.DEFAULT_SESSION_TIMEOUT,
                     },
                     concurrency: envInt('MAX_CONCURRENCY') ?? config.DEFAULT_MAX_CONCURRENCY,
                     pool: tasksHandler.poolLength(),
