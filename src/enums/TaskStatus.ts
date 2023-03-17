@@ -1,10 +1,16 @@
 export enum TaskStatus {
+    //Under processing statuses
     CREATED = 'CREATED',
-    RUNNING = 'RUNNING',
-    DONE = 'DONE',
-    FAILED = 'FAILED',
     QUEUE = 'QUEUE',
+    RUNNING = 'RUNNING',
+
+    //Final statuses
+    RESOLVE = 'RESOLVE',
+    REJECT = 'REJECT',
+    THROW = 'THROW',
     INIT_ERROR = 'INIT_ERROR',
-    TIMEOUT = 'TIMEOUT',
     BAD_ARGS = 'BAD_ARGS',
+    QUEUE_TIMEOUT = 'QUEUE_TIMEOUT',
+    INIT_TIMEOUT = 'INIT_TIMEOUT',
+    SESSION_TIMEOUT = 'SESSION_TIMEOUT',
 }

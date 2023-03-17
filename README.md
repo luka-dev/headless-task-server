@@ -47,8 +47,9 @@ npm run build
 - `AUTH_KEY` - Auth key for requests, default `null`
 - `SERVER_PORT` - Server port, default `8080`
 - `UPSTREAM_PROXY_URL` - Default proxy for script, default `null`, also can be set personally for each task in options `upstreamProxyUrl`
-- `SESSION_TIMEOUT` - Timeout task script execution, default `60000` (1 min)
-- `QUEUE_TIMEOUT` - Timeout og waiting to begin task processing, default `30000` (30 sec)
+- `QUEUE_TIMEOUT` - Max queue waiting time. Ends when task moved from `queue` to `pool`, default `30000` (30 sec)
+- `INIT_TIMEOUT` - Max waiting time, to launch new chrome context for task. Runs when task moved to `pool`, default `15000` (15 sec)
+- `SESSION_TIMEOUT` - Max task script execution time inside `pool`/ Counts only after context created, default `60000` (1 min)
 - `MAX_CONCURRENCY` - Limit of concurrent tasks, default `5`
 > NOTE: If you want to calculate custom value, you can use this formula `MAX_CONCURRENCY = (FREE_RAM - 1.5GB) / 0.5GB`, also to prevent stuttering avg formula for CPU is `MAX_CONCURRENCY = CPU_CORES_COUNT * 2`
 - `CONCURRENCY_DISABLE_MEM_LIMITER` - Memory limiter for concurrency, can be disabled with `true`.
@@ -95,18 +96,23 @@ npm run build
 >     },
 >     "task": {
 >         "timeout": {
->             "session": 60000,
->             "queue": 30000
+>             "session": 60000, //timeout task script execution
+>             "queue": 30000, //max time waiting in queue
+>             "init": 15000 //timeout for waiting for new chrome context
 >         },
 >         "concurrency": 1,
 >         "pool": 0,
 >         "queue": 0,
 >         "counter": {
 >             "total": 4,
->             "done": 4,
->             "error": 0,
->             "session_timeout": 0,
->             "queue_timeout": 0
+>             "resolve": 1, //reports when script passed successfully
+>             "reject": 2, //if task script find thats it's not possible to continue, script will report reject
+>             "throw": 1, //thrown by task script, but not catched inside. For example, goto timeout
+>             "init_error": 0, //if chrome context throw error. Usualy, proxy is not valid or dead
+>             "bad_args": 0 //if post params is not valid
+>             "queue_timeout": 0,
+>             "init_timeout": 0,
+>             "session_timeout": 0
 >         }
 >     },
 >     "server": {
@@ -165,7 +171,7 @@ npm run build
 > - Whole Response
 > ```json
 > {
->   "status": "DONE",  //DONE, FAILED, INIT_ERROR, TIMEOUT, BAD_ARGS
+>   "status": "RESOLVE",  //Look at TaskStatus.ts
 >   "timings": {
 >     "begin_at": "2022-01-31T12:46:54",
 >     "end_at": "2022-01-31T12:46:56",

@@ -27,8 +27,9 @@ webServer.start()
 
         const tasksHandler = new TasksPoolHandler(
             config.DEFAULT_MAX_CONCURRENCY,
-            config.DEFAULT_SESSION_TIMEOUT,
+            config.DEFAULT_INIT_TIMEOUT,
             config.DEFAULT_QUEUE_TIMEOUT,
+            config.DEFAULT_SESSION_TIMEOUT,
             config.DEFAULT_UPSTREAM_PROXY_URL,
             config.DEFAULT_BLOCKED_RESOURCE_TYPES
         );
@@ -95,7 +96,7 @@ webServer.start()
             ) {
                 const callback = (task: Task) => {
                     response
-                        .status(task.status === TaskStatus.DONE ? 200 : 500)
+                        .status(200)
                         .json({
                             status: task.status,
                             timings: task.timings,

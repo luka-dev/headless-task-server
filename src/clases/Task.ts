@@ -5,6 +5,7 @@ import IUserProfile from "@ulixee/hero-interfaces/IUserProfile";
 import Hero from "@ulixee/hero";
 import AsyncFunction from "../helpers/AsyncFuncion";
 import {findEvalDetailsFromError} from "../helpers/ErrorHelper";
+import TaskSessionTimeout from "../exceptions/TaskSessionTimeout";
 
 export default class Task {
     private readonly script: string;
@@ -45,9 +46,8 @@ export default class Task {
             const promise = new Promise<any>((resolve, reject) => {
                     fulfilledCheckInterval = setInterval(() => {
                         if (this.isFulfilled) {
-                            const message = 'Execution: fulfilled before execution ended, aborting.';
-                            console.log('Task: ' + message);
-                            reject(message);
+                            reject(new TaskSessionTimeout());
+                            clearInterval(fulfilledCheckInterval!);
                         }
                     }, 10);
 
@@ -56,7 +56,7 @@ export default class Task {
                         'resolve', 'reject', 'agent',
                         `try {\n` +
                         `${this.script};\n` +
-                        `resolve(); } catch(e) { reject(e); }`
+                        `resolve(); } catch(e) { e.name = 'TaskOuterCatch' ; reject(e); }`
                     )
                     (resolve, reject, agent)
                 }
@@ -67,7 +67,7 @@ export default class Task {
                     clearInterval(fulfilledCheckInterval!);
                 })
                 .then(async (output) => {
-                    this.fulfill(TaskStatus.DONE, output, null, await exportProfile());
+                    this.fulfill(TaskStatus.RESOLVE, output, null, await exportProfile());
                 })
                 .catch(async (error) => {
                     if (error instanceof Error) {
@@ -75,7 +75,12 @@ export default class Task {
                     } else {
                         console.warn('Task: Script: ' + error);
                     }
-                    this.fulfill(TaskStatus.FAILED, null, error, await exportProfile());
+                    this.fulfill(
+                        (error instanceof Error && error.name === 'TaskOuterCatch') ? TaskStatus.THROW : TaskStatus.REJECT,
+                        null,
+                        error,
+                        await exportProfile()
+                    );
                 });
 
             return promise;

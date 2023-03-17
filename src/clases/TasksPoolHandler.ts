@@ -11,11 +11,13 @@ import {envBool, envInt, envString} from "../helpers/EnvHelper";
 import {IpLookupServices} from "@ulixee/default-browser-emulator/lib/helpers/lookupPublicIp";
 import TimeoutError from "@ulixee/commons/interfaces/TimeoutError";
 import Logger from "./Logger";
+import {clearTimeout} from "timers";
 
 export default class TasksPoolHandler {
     private readonly maxConcurrency: number;
-    private readonly sessionTimeout: number;
     private readonly queueTimeout: number;
+    private readonly initTimeout: number;
+    private readonly sessionTimeout: number;
     private readonly upstreamProxyUrl: string|null;
     private readonly blockedResourceTypes: BlockedResourceType[];
     private isRunning: boolean = false;
@@ -24,22 +26,30 @@ export default class TasksPoolHandler {
     private pool: Task[] = [];
     private queue: Task[] = [];
     private counter = {
-        done: 0,
-        failed: 0,
-        session_timeout: 0,
-        queue_timeout: 0,
+        resolve: 0,
+        reject: 0,
+        throw: 0,
         init_error: 0,
+        bad_args: 0,
+        queue_timeout: 0,
+        init_timeout: 0,
+        session_timeout: 0,
     };
     public constructor(
         maxConcurrency: number,
-        sessionTimeout: number = 60000,
         queueTimeout: number = 30000,
+        initTimeout: number = 15000,
+        sessionTimeout: number = 60000,
         upstreamProxyUrl: string | null = null,
         blockedResourceTypes: BlockedResourceType[] = []
     ) {
         this.maxConcurrency = envInt('MAX_CONCURRENCY') ?? maxConcurrency;
-        this.sessionTimeout = envInt('SESSION_TIMEOUT') ?? sessionTimeout;
+
+        //Timeouts
         this.queueTimeout = envInt('QUEUE_TIMEOUT') ?? queueTimeout;
+        this.initTimeout = envInt('INIT_TIMEOUT') ?? initTimeout;
+        this.sessionTimeout = envInt('SESSION_TIMEOUT') ?? sessionTimeout;
+
         this.upstreamProxyUrl = envString('UPSTREAM_PROXY_URL') ?? upstreamProxyUrl;
         this.blockedResourceTypes = blockedResourceTypes;
 
@@ -59,11 +69,13 @@ export default class TasksPoolHandler {
 
     public push(task: Task): void {
         task.status = TaskStatus.QUEUE;
+
+        //QUEUE_TIMEOUT Watchdog
         task.timer = setTimeout(async () => {
             const isInPool = this.pool.includes(task);
             const message = `TaskPool: ${isInPool ? 'Init' : 'Queue'} Timeout, pool: ${this.pool.length}, queue: ${this.queue.length}`;
             console.warn(message);
-            task.fulfill(TaskStatus.TIMEOUT, null, message);
+            task.fulfill(TaskStatus.QUEUE_TIMEOUT, null, message);
             this.counter.queue_timeout++;
 
             clearTimeout(task.timer!);
@@ -75,11 +87,13 @@ export default class TasksPoolHandler {
     private execute(task: Task): void {
         task.status = TaskStatus.RUNNING;
 
-        // clearTimeout(task.timer!);
-        // task.timer = setInterval(async () => {
-        //     //TODO: Timer for agent creation
-        //     task.fulfill(TaskStatus.INIT_ERROR, null, 'TaskPool: Agent: Too long Hero init');
-        // }, 30000);
+        //INIT_TIMEOUT Watchdog
+        clearTimeout(task.timer!);
+        task.timer = setTimeout(async () => {
+            task.fulfill(TaskStatus.INIT_TIMEOUT, null, 'TaskPool: Agent: Too long Hero init');
+            this.counter.init_timeout++;
+            clearTimeout(task.timer!);
+        }, this.initTimeout);
 
         const instance = new Hero({
             blockedResourceTypes: this.blockedResourceTypes,
@@ -101,19 +115,22 @@ export default class TasksPoolHandler {
                     return;
                 }
 
+                //SESSION_TIMEOUT Watchdog
                 task.timer = setTimeout(async () => {
                     this.counter.session_timeout++;
-                    task.fulfill(TaskStatus.TIMEOUT, null, 'Task: Script: Session Timeout');
+                    task.fulfill(TaskStatus.SESSION_TIMEOUT, null, 'Task: Script: Session Timeout');
+                    clearTimeout(task.timer!);
                 }, this.sessionTimeout);
 
                 //@ts-ignore we have Omit<Hero, "then">, but to reduce complexity we represent as Hero
                 task.promise(agent)
                     .then(async () => {
-                        this.counter.done++;
+                        this.counter.resolve++;
                     })
-                    .catch(async () => {
-                        if (!task.getIsFulfilled())
-                            this.counter.failed++;
+                    .catch(async (error) => {
+                        if (!task.getIsFulfilled()) {
+                            (error instanceof Error && error.name === 'TaskOuterCatch') ? this.counter.throw++ : this.counter.reject++;
+                        }
                     })
                     .finally(async () => {
                         clearTimeout(task.timer!);
@@ -153,8 +170,8 @@ export default class TasksPoolHandler {
     }
 
     private tick(): void {
-        this.pool = this.pool.filter((task) => [TaskStatus.CREATED, TaskStatus.RUNNING, TaskStatus.QUEUE].includes(task.status))
-        this.queue = this.queue.filter((task) => TaskStatus.TIMEOUT !== task.status);
+        this.pool = this.pool.filter((task) => [TaskStatus.RUNNING, TaskStatus.QUEUE].includes(task.status))
+        this.queue = this.queue.filter((task) => TaskStatus.QUEUE_TIMEOUT !== task.status);
 
         if (this.pool.length < this.maxConcurrency && this.queue.length > 0) {
             const freeMemory = bytesToMegabytes(OS.freemem());
@@ -186,7 +203,7 @@ export default class TasksPoolHandler {
     public onDisconnected() {
         new Promise<void>((resolve) => {
             setInterval(() => {
-                this.pool = this.pool.filter((task) => [TaskStatus.CREATED, TaskStatus.RUNNING, TaskStatus.QUEUE].includes(task.status))
+                this.pool = this.pool.filter((task) => [TaskStatus.RUNNING, TaskStatus.QUEUE].includes(task.status))
                 if (this.pool.length === 0) {
                     resolve();
                 }
@@ -212,11 +229,15 @@ export default class TasksPoolHandler {
         return this.counter;
     }
     public getCounterTotal(): number {
-        return this.counter.done + this.counter.failed + this.counter.session_timeout + this.counter.queue_timeout + this.counter.init_error;
+        return Object.values(this.counter).reduce((a, b) => a + b, 0);
     }
 
     public getIsRunning(): boolean {
         return this.isRunning;
+    }
+
+    public incrementCounterBadArgs() : void {
+        this.counter.bad_args++;
     }
 
 }
