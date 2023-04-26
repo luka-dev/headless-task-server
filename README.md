@@ -4,7 +4,7 @@ A headless browser task server based on [Hero](https://github.com/ulixee/hero).
 
 - Hero is a web browser that's built for scraping.
 - This task server allow you to process multiple task simultaneously on single server instance
-- Has [Helper](https://github.com/luka-dev/headless-task-server-php#helpers) for PHP to make request easy (!!!!!!Outdated!!!!!!, update soon)
+- Has [Helper](https://github.com/luka-dev/headless-task-server-php#helpers) for PHP to make request easy
 
 # Install
 
