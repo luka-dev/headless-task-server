@@ -1,7 +1,7 @@
 import {TaskStatus} from "../enums/TaskStatus";
 
 import Hero, {BlockedResourceType, ConnectionToHeroCore} from '@ulixee/hero';
-import Core from '@ulixee/hero-core';
+import HeroCore from '@ulixee/hero-core';
 import {TransportBridge} from '@ulixee/net';
 
 import Task from "./Task";
@@ -13,6 +13,8 @@ import TimeoutError from "@ulixee/commons/interfaces/TimeoutError";
 import Logger from "./Logger";
 import {clearTimeout} from "timers";
 
+import ExecuteJsPlugin from '@ulixee/execute-js-plugin';
+
 export default class TasksPoolHandler {
     private readonly maxConcurrency: number;
     private readonly queueTimeout: number;
@@ -20,8 +22,9 @@ export default class TasksPoolHandler {
     private readonly sessionTimeout: number;
     private readonly upstreamProxyUrl: string|null;
     private readonly blockedResourceTypes: BlockedResourceType[];
+    private readonly core: HeroCore;
     private isRunning: boolean = false;
-    private readonly timer?: NodeJS.Timer;
+    private timer?: NodeJS.Timer;
     private readonly connectionToCore: ConnectionToHeroCore;
     private pool: Task[] = [];
     private queue: Task[] = [];
@@ -53,18 +56,16 @@ export default class TasksPoolHandler {
         this.upstreamProxyUrl = envString('UPSTREAM_PROXY_URL') ?? upstreamProxyUrl;
         this.blockedResourceTypes = blockedResourceTypes;
 
+        this.core = new HeroCore();
+
         const bridge = new TransportBridge();
         this.connectionToCore = new ConnectionToHeroCore(bridge.transportToCore, {
             instanceTimeoutMillis: this.sessionTimeout,
             maxConcurrency: this.maxConcurrency * 4
         });
-        this.connectionToCore.on('disconnected', () => this.onDisconnected())
-        Core.onShutdown = () => this.onDisconnected();
-
-        Core.addConnection(bridge.transportToClient);
-
-        this.isRunning = true;
-        this.timer = setInterval(() => this.tick(), 10);
+        this.connectionToCore.on('disconnected', () => this.onDisconnected());
+        this.core.addConnection(bridge.transportToClient);
+        this.core.use(ExecuteJsPlugin);
     }
 
     public push(task: Task): void {
@@ -84,7 +85,7 @@ export default class TasksPoolHandler {
         this.queue.push(task);
     }
 
-    private execute(task: Task): void {
+    private async execute(task: Task): Promise<void> {
         task.status = TaskStatus.RUNNING;
 
         //INIT_TIMEOUT Watchdog
@@ -95,78 +96,79 @@ export default class TasksPoolHandler {
             clearTimeout(task.timer!);
         }, this.initTimeout);
 
-        const instance = new Hero({
-            blockedResourceTypes: this.blockedResourceTypes,
-            upstreamProxyUrl: this.upstreamProxyUrl ?? undefined,
-            upstreamProxyIpMask: {
-                ipLookupService: IpLookupServices.aws,
-            },
-            ...task.options,
-            showChrome: envBool('SHOW_CHROME'),
-            userProfile: task.profile,
-            connectionToCore: this.connectionToCore
-        });
-
-        instance
-            .then(async (agent) => {
-                clearTimeout(task.timer!);
-                if (task.getIsFulfilled()) {
-                    await agent.close();
-                    return;
-                }
-
-                //SESSION_TIMEOUT Watchdog
-                task.timer = setTimeout(async () => {
-                    this.counter.session_timeout++;
-                    task.fulfill(TaskStatus.SESSION_TIMEOUT, null, 'Task: Script: Session Timeout');
-                    clearTimeout(task.timer!);
-                }, this.sessionTimeout);
-
-                //@ts-ignore we have Omit<Hero, "then">, but to reduce complexity we represent as Hero
-                task.promise(agent)
-                    .then(async () => {
-                        this.counter.resolve++;
-                    })
-                    .catch(async (error) => {
-                        if (!task.getIsFulfilled()) {
-                            (error instanceof Error && error.name === 'TaskOuterCatch') ? this.counter.throw++ : this.counter.reject++;
-                        }
-                    })
-                    .finally(async () => {
-                        clearTimeout(task.timer!);
-                        await agent.close();
-                    });
-            })
-            .catch(async (error) => {
-                clearTimeout(task.timer!);
-
-                //TimeoutError while connecting IpLookupServices for proxy check
-                //Possible error in proxy or target is down
-                if (error instanceof TimeoutError && error.message.includes('Timeout connecting to')) {
-                    task.fulfill(TaskStatus.INIT_ERROR, null, `TaskPool: Agent: Proxy: ${error.name}: ${error.message}`);
-                    await instance.close();
-                }
-                //HttpProxyConnectError: Http Proxy Connect Error connection refused (404)
-                //form "@ulixee/unblocked-agent-mitm-socket" not exported
-                else if (error instanceof Error && error.name == 'HttpProxyConnectError') {
-                    task.fulfill(TaskStatus.INIT_ERROR, null, `TaskPool: Agent: Proxy: ${error.name}: ${error.message}`);
-                    await instance.close();
-                }
-                //Socks5ProxyConnectError, same as HttpProxyConnectError above
-                else if (error instanceof Error && error.name == 'Socks5ProxyConnectError') {
-                    task.fulfill(TaskStatus.INIT_ERROR, null, `TaskPool: Agent: Proxy: ${error.name}: ${error.message}`);
-                    await instance.close();
-                }
-                //handle fatal error, recommend to close all agents and restart app
-                else {
-                    console.error(`TaskPool: Hero Core Init Error:  ${error.name}: ${error.message}`);
-                    task.fulfill(TaskStatus.INIT_ERROR, null, `TaskPool: Agent: ${error.name}: ${error.message}`);
-                    this.close();
-                    await instance.close();
-                    console.warn('TaskPool: Hero Core Shutdown, waiting for pool to finish');
-                    this.onDisconnected()
-                }
+        let instance: Hero | null = null;
+        try {
+            instance = new Hero({
+                blockedResourceTypes: this.blockedResourceTypes,
+                upstreamProxyUrl: this.upstreamProxyUrl ?? undefined,
+                upstreamProxyIpMask: {
+                    ipLookupService: IpLookupServices.aws,
+                },
+                ...task.options,
+                showChrome: envBool('SHOW_CHROME'),
+                userProfile: task.profile,
+                connectionToCore: this.connectionToCore
             });
+            instance.use(ExecuteJsPlugin);
+
+            clearTimeout(task.timer!);
+            if (task.getIsFulfilled()) {
+                await instance.close();
+                return;
+            }
+
+            //SESSION_TIMEOUT Watchdog
+            task.timer = setTimeout(async () => {
+                this.counter.session_timeout++;
+                task.fulfill(TaskStatus.SESSION_TIMEOUT, null, 'Task: Script: Session Timeout');
+                clearTimeout(task.timer!);
+            }, this.sessionTimeout);
+
+            //@ts-ignore we have Omit<Hero, "then">, but to reduce complexity we represent as Hero
+            task.promise(instance)
+                .then(async () => {
+                    this.counter.resolve++;
+                })
+                .catch(async (error) => {
+                    if (!task.getIsFulfilled()) {
+                        (error instanceof Error && error.name === 'TaskOuterCatch') ? this.counter.throw++ : this.counter.reject++;
+                    }
+                })
+                .finally(async () => {
+                    clearTimeout(task.timer!);
+                    await instance?.close();
+                });
+        }
+        catch (error: any) {
+            clearTimeout(task.timer!);
+
+            //TimeoutError while connecting IpLookupServices for proxy check
+            //Possible error in proxy or target is down
+            if (error instanceof TimeoutError && error.message.includes('Timeout connecting to')) {
+                task.fulfill(TaskStatus.INIT_ERROR, null, `TaskPool: Agent: Proxy: ${error.name}: ${error.message}`);
+                await instance?.close();
+            }
+                //HttpProxyConnectError: Http Proxy Connect Error connection refused (404)
+            //form "@ulixee/unblocked-agent-mitm-socket" not exported
+            else if (error instanceof Error && error.name == 'HttpProxyConnectError') {
+                task.fulfill(TaskStatus.INIT_ERROR, null, `TaskPool: Agent: Proxy: ${error.name}: ${error.message}`);
+                await instance?.close();
+            }
+            //Socks5ProxyConnectError, same as HttpProxyConnectError above
+            else if (error instanceof Error && error.name == 'Socks5ProxyConnectError') {
+                task.fulfill(TaskStatus.INIT_ERROR, null, `TaskPool: Agent: Proxy: ${error.name}: ${error.message}`);
+                await instance?.close();
+            }
+            //handle fatal error, recommend to close all agents and restart app
+            else {
+                console.error(`TaskPool: Hero Core Init Error:  ${error.name}: ${error.message}`);
+                task.fulfill(TaskStatus.INIT_ERROR, null, `TaskPool: Agent: ${error.name}: ${error.message}`);
+                this.close();
+                await instance?.close();
+                console.warn('TaskPool: Hero Core Shutdown, waiting for pool to finish');
+                this.onDisconnected()
+            }
+        }
     }
 
     private tick(): void {
@@ -187,8 +189,15 @@ export default class TasksPoolHandler {
         }
     }
 
-    public close(): void {
+    public async start(): Promise<void> {
+        await this.core.start();
+        this.isRunning = true;
+        this.timer = setInterval(() => this.tick(), 10);
+    }
+
+    public async close(): Promise<void> {
         clearInterval(this.timer);
+        await this.core.close();
         this.isRunning = false;
 
         console.warn('TaskPool: Queue: Stopped');

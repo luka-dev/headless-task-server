@@ -23,7 +23,7 @@ const webServer = new WebServer(config.SERVER_PORT);
 webServer.setAuthKey(config.AUTH_KEY);
 
 webServer.start()
-    .on('listening', () => {
+    .on('listening', async () => {
 
         const tasksHandler = new TasksPoolHandler(
             config.DEFAULT_MAX_CONCURRENCY,
@@ -33,6 +33,7 @@ webServer.start()
             config.DEFAULT_UPSTREAM_PROXY_URL,
             config.DEFAULT_BLOCKED_RESOURCE_TYPES
         );
+        await tasksHandler.start();
         console.log('Browser Handler runned');
 
         const buildTimeStamp: string | null = readFileSync('./dist/buildtimestamp', 'utf8').trim() ?? null;
@@ -83,8 +84,8 @@ webServer.start()
             response.json(Logger.getRows());
         })
 
-        webServer.get('/restart', (request, response) => {
-                tasksHandler.close();
+        webServer.get('/restart', async (request, response) => {
+                await tasksHandler.close();
                 response.json('restarting...');
                 tasksHandler.onDisconnected();
             }
@@ -125,6 +126,7 @@ webServer.start()
                 }
 
             } else {
+                tasksHandler.incrementCounterBadArgs();
                 response
                     .status(500)
                     .json({
@@ -138,7 +140,7 @@ webServer.start()
             }
         });
     })
-    .on('error', () => {
+    .on('error',() => {
         console.error('Process stopped, port is busy.');
         process.exit(1);
     })
