@@ -20,7 +20,7 @@ npm install
 npm run build
 ```
 
-- Now we can run it with Docker OR directly on machine
+- Now we can run it directly on machine
 > NOTE: Viewing browser and replays will work only on machine
 
 - Docker way
