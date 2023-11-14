@@ -39,10 +39,19 @@ RUN apt-get install -y --allow-downgrades \
 WORKDIR /app/www
 RUN mkdir -p /opt/bin && chmod +x /dev/shm
 
-COPY ./dist /app/www/dist
+RUN npm install -g npm@latest
+RUN npm config set update-notifier false
+
 COPY ./config.json /app/www
+COPY ./tsconfig.json /app/www
 COPY ./package.json /app/www
 COPY ./package-lock.json /app/www
+RUN npm install -ci
+
+RUN sh $(npx install-browser-deps)
+
+COPY ./src /app/www/src
+RUN npm run build
 
 #ENV ULX_DEBUG true
 #ENV DEBUG true
@@ -53,11 +62,7 @@ COPY ./package-lock.json /app/www
 ENV NODE_ENV production
 ENV ULX_NO_CHROME_SANDBOX true
 
-RUN npm install -g npm@latest
-RUN npm config set update-notifier false
-RUN npm install --production
-
-RUN sh $(npx install-browser-deps)
+RUN rm -rf /app/www/src
 
 EXPOSE 8080
 CMD ["npm", "run", "start"]
