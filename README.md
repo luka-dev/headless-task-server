@@ -88,7 +88,7 @@ npm run build
 > ```
 >
 > 
-> ```json
+> ```jsonc
 > {
 >     "timestamp": {
 >         "build": "2023-02-23T11:22:04",
@@ -165,11 +165,11 @@ npm run build
 > resolve(await agent.document.title);
 > ```
 > - Expected Output
-> ```json
+> ```jsonc
 > "Example Domain"
 > ```
 > - Whole Response
-> ```json
+> ```jsonc
 > {
 >   "status": "RESOLVE",  //Look at TaskStatus.ts
 >   "timings": {
