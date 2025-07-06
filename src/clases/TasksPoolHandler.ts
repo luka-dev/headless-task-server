@@ -65,6 +65,8 @@ export default class TasksPoolHandler {
         });
         this.connectionToCore.on('disconnected', () => this.onDisconnected());
         this.core.addConnection(bridge.transportToClient);
+
+        //Core Plugins
         this.core.use(ExecuteJsPlugin);
     }
 
@@ -109,6 +111,7 @@ export default class TasksPoolHandler {
                 userProfile: task.profile,
                 connectionToCore: this.connectionToCore
             });
+            //Client Plugins
             instance.use(ExecuteJsPlugin);
 
             clearTimeout(task.timer!);
@@ -125,19 +128,26 @@ export default class TasksPoolHandler {
             }, this.sessionTimeout);
 
             //@ts-ignore we have Omit<Hero, "then">, but to reduce complexity we represent as Hero
-            task.promise(instance)
-                .then(async () => {
-                    this.counter.resolve++;
-                })
-                .catch(async (error) => {
-                    if (!task.getIsFulfilled()) {
-                        (error instanceof Error && error.name === 'TaskOuterCatch') ? this.counter.throw++ : this.counter.reject++;
+            try {
+                await task.promise(instance);
+                this.counter.resolve++;
+            } catch (error) {
+                if (!task.getIsFulfilled()) {
+                    if (error instanceof Error && error.name === 'TaskOuterCatch') {
+                        this.counter.throw++;
+                    } else {
+                        this.counter.reject++;
                     }
-                })
-                .finally(async () => {
-                    clearTimeout(task.timer!);
+                }
+            } finally {
+                clearTimeout(task.timer!);
+                try {
                     await instance?.close();
-                });
+                } catch (closeErr) {
+                    console.error('Failed to close Hero instance:', closeErr);
+                }
+            }
+
         }
         catch (error: any) {
             clearTimeout(task.timer!);

@@ -16,9 +16,10 @@ export default class Task {
     public output: any = null;
     public error: any = null;
     private isFulfilled: boolean = false;
-    public timer: NodeJS.Timeout|null = null;
+    public timer: NodeJS.Timeout | null = null;
     public promise: (agent: Hero) => Promise<any>;
     private readonly callback: (task: Task) => void;
+
     public constructor(script: string, options: ITaskOptions = {}, profile: IUserProfile = {}, callback: (task: Task) => void) {
         this.script = script;
         this.options = options;
@@ -28,7 +29,7 @@ export default class Task {
         this.callback = callback;
 
         this.promise = (agent: Hero) => {
-            let fulfilledCheckInterval: NodeJS.Timer|null = null;
+            let fulfilledCheckInterval: NodeJS.Timer | null = null;
 
             const exportProfile = async (): Promise<IUserProfile> => {
                 try {
@@ -43,22 +44,45 @@ export default class Task {
                 return this.profile;
             }
 
+            let isSettled = false;
+
             const promise = new Promise<any>((resolve, reject) => {
+                    const safeReject = (err: any) => {
+                        if (!isSettled) {
+                            isSettled = true;
+                            reject(err);
+                        }
+                    };
+                    const safeResolve = (val: any) => {
+                        if (!isSettled) {
+                            isSettled = true;
+                            resolve(val);
+                        }
+                    };
+
                     fulfilledCheckInterval = setInterval(() => {
                         if (this.isFulfilled) {
-                            reject(new TaskSessionTimeout());
+                            safeReject(new TaskSessionTimeout());
                             clearInterval(fulfilledCheckInterval!);
                         }
                     }, 10);
 
-                    //TODO: suppress console.log in user scripts
-                    return new AsyncFunction(
-                        'resolve', 'reject', 'agent',
-                        `try {\n` +
-                        `${this.script};\n` +
-                        `resolve(); } catch(e) { e.name = 'TaskOuterCatch' ; reject(e); }`
-                    )
-                    (resolve, reject, agent)
+                    (async () => {
+                        try {
+                            await new AsyncFunction(
+                                'resolve', 'reject', 'agent',
+                                `try {
+                                    ${this.script};
+                                    resolve();
+                                } catch(e) {
+                                    reject(Object.assign(new Error('Task Outer Catch', { cause: e }), { name: 'TaskOuterCatch' }));
+                                }`
+                            )(safeResolve, safeReject, agent);
+                        } catch (e) {
+                            safeReject(e);
+                        }
+                    })();
+
                 }
             );
 
@@ -87,7 +111,7 @@ export default class Task {
         }
     }
 
-    public fulfill(status: TaskStatus, output: any = null, error: any = null, profile: IUserProfile|null = null): void {
+    public fulfill(status: TaskStatus, output: any = null, error: any = null, profile: IUserProfile | null = null): void {
         if (this.isFulfilled) {
             console.warn('Task: already fulfilled');
             return;
