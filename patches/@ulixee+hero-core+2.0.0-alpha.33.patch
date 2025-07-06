@@ -1,23 +1,51 @@
 diff --git a/node_modules/@ulixee/hero-core/injected-scripts/Fetcher.js b/node_modules/@ulixee/hero-core/injected-scripts/Fetcher.js
-index 9f20d00..b6cf48a 100644
+index 9f20d00..f54c9cf 100644
 --- a/node_modules/@ulixee/hero-core/injected-scripts/Fetcher.js
 +++ b/node_modules/@ulixee/hero-core/injected-scripts/Fetcher.js
-@@ -18,7 +18,18 @@ class Fetcher {
+@@ -18,12 +18,39 @@ class Fetcher {
          if (typeof input === 'number') {
              requestOrUrl = NodeTracker.getWatchedNodeWithId(input);
          }
+-        const response = await fetch(requestOrUrl, init);
+-        const nodeId = NodeTracker.watchNode(response);
+-        return {
+-            id: nodeId,
+-            type: response.constructor.name,
+-        };
++
++        if (init.signal !== undefined && init.timeout !== undefined) {
++            throw new Error('Cannot use both signal and timeout in fetch options');
++        }
++
 +        let timer = null;
-+        if (typeof init === 'object' && init.hasOwnProperty('timeout') && typeof init.timeout === 'number' && init.timeout > 0) {
++        if (init.timeout !== undefined) {
++            if (typeof init.timeout !== 'number' || init.timeout < 0) {
++                throw new Error(`Invalid timeout value: ${init.timeout}`);
++            }
 +            const controller = new AbortController();
-+            timer = setTimeout(() => controller.abort(), init.timeout);
++            timer = setTimeout(() => controller.abort('Fetch request timed out'), init.timeout);
++
++            const { timeout, ...rest } = init;
 +            init = {
-+                ...init,
-+                timeout: undefined,
++                ...rest,
 +                signal: controller.signal,
 +            };
 +        }
-         const response = await fetch(requestOrUrl, init);
-+        clearTimeout(timer);
-         const nodeId = NodeTracker.watchNode(response);
-         return {
-             id: nodeId,
++
++        try {
++            const response = await fetch(requestOrUrl, init);
++            clearTimeout(timer);
++
++            return {
++                id: NodeTracker.watchNode(response),
++                type: response.constructor.name,
++            };
++        } catch (err) {
++            clearTimeout(timer);
++            throw err;
++        }
+     }
++
+ }
+ //# sourceMappingURL=Fetcher.js.map
+\ No newline at end of file
