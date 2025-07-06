@@ -29,7 +29,7 @@ process.on('unhandledRejection', err => { console.error(err); process.exit(1); }
     console.log(`Running scenario: ${name}`);
     let response;
     try {
-      response = await axios.post(`${host}/task`, { script, options }, { timeout: 60000 });
+      response = await axios.post(`${host}/task`, { script: script, ...options }, { timeout: 60000 });
     } catch (err) {
       console.error(`${name} failed: ${err}`);
       process.exit(1);
