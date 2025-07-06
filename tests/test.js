@@ -1,35 +1,44 @@
-const path = require('path');
+#!/usr/bin/env node
+
 const fs = require('fs');
+const path = require('path');
+const axios = require('axios');
 
-const dirPath = __dirname + '/scenarios';
-fs.readdir(dirPath, function (err, files) {
-    //handling error
-    if (err) {
-        return console.log('Unable to scan directory: ' + err);
+process.on('unhandledRejection', err => { console.error(err); process.exit(1); });
+
+(async () => {
+  const hostArg = process.argv[2] || 'http://localhost:8080';
+  const host = hostArg.startsWith('http') ? hostArg : `http://${hostArg}`;
+  const dirPath = path.join(__dirname, 'scenarios');
+  let files;
+  try {
+    files = fs.readdirSync(dirPath);
+  } catch (err) {
+    console.error(`Unable to scan directory: ${err}`);
+    process.exit(1);
+  }
+  for (const file of files) {
+    if (!file.endsWith('.js')) continue;
+    const name = file.slice(0, -3);
+    const script = fs.readFileSync(path.join(dirPath, file), 'utf8').trim();
+    if (!script) continue;
+    const optionsPath = path.join(dirPath, `${name}.json`);
+    const options = fs.existsSync(optionsPath)
+      ? JSON.parse(fs.readFileSync(optionsPath, 'utf8'))
+      : {};
+    console.log(`Running scenario: ${name}`);
+    let response;
+    try {
+      response = await axios.post(`${host}/task`, { script, options }, { timeout: 60000 });
+    } catch (err) {
+      console.error(`${name} failed: ${err}`);
+      process.exit(1);
     }
-    //listing all files using forEach
-    files.forEach(function (file) {
-        //Skip if not a js file
-        if (!file.includes('.js')) {
-            return;
-        }
-
-        //Ignore json files (its an options)
-        if (file.includes('.json')) {
-            return;
-        }
-
-        const name = file.slice(0, -3);
-
-        //Read the file content
-        const content = fs.readFileSync(path.join(dirPath, file), {encoding: 'utf8', flag: 'r'});
-        let options = {};
-
-        //Check if the file exists in the same directory
-        if (fs.existsSync(path.join(dirPath, name + '.json'))) {
-            options = JSON.parse(fs.readFileSync(path.join(dirPath, name + '.json'), {encoding: 'utf8', flag: 'r'}))
-        }
-
-        //TODO: Run the scenarios, in single thread
-    });
-});
+    const result = response.data;
+    if (result.status !== 'RESOLVE') {
+      console.error(`${name} failed: status ${result.status}, error ${result.error || result.output}`);
+      process.exit(1);
+    }
+    console.log(`${name} passed, output: ${JSON.stringify(result.output)}`);
+  }
+})();
